@@ -1,11 +1,553 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>高数公式记忆助手</title>
+    <style>
+        /* 学术中性色彩变量 */
+        :root {
+            --primary: #4f46e5;      
+            --primary-hover: #4338ca;
+            --success: #059669;      
+            --danger: #dc2626;       
+            --reset: #6b7280;        
+            --bg-color: #f9fafb;     
+            --card-bg: #ffffff;      
+            --text-main: #111827;    
+            --text-muted: #6b7280;   
+            --border-color: rgba(0, 0, 0, 0.05); 
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            /* 禁用移动端点击高亮 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            color: var(--text-main);
+            padding: 16px;
+            line-height: 1.5;
+            background: var(--bg-color);
+            /* 移动端惯性滚动核心配置 */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain; 
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin: 10px 0 20px;
+            letter-spacing: 1px;
+        }
+
+        /* 顶部导航栏 */
+        .nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            background: rgba(249, 250, 251, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 0;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            color: var(--text-muted);
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* 控制栏 */
+        .control-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            background: #fff;
+            padding: 12px;
+            border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .mode-group {
+            display: flex;
+            background: #f3f4f6;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .mode-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .mode-btn.active.query-mode { background: #0284c7; color: white; }
+        .mode-btn.active.recite-mode { background: #d97706; color: white; }
+
+        .global-controls {
+            display: flex;
+            gap: 10px;
+            border-left: 1px solid #e5e7eb;
+            padding-left: 15px;
+        }
+
+        .global-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .show-all { background: var(--success); }
+        .hide-all { background: var(--danger); }
+
+        /* 模块 */
+        .module { display: none; }
+        .module.active { display: block; }
+
+        .module h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+        }
+        .module h2::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--primary);
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        .sub-title {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            padding-left: 8px;
+            border-left: 2px solid #cbd5e1;
+        }
+
+        /* 公式网格 */
+        .formula-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            perspective: 1200px;
+        }
+
+        /* 3D 卡片 */
+        .formula-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transform-style: preserve-3d;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .formula-row {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            font-family: 'Times New Roman', Times, serif;
+            min-height: 40px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin: 0 4px;
+        }
+        .frac .num { padding: 0 6px; border-bottom: 1px solid currentColor; line-height: 1.2; }
+        .frac .den { padding: 0 6px; line-height: 1.2; }
+
+        /* 3D 翻转区域 */
+        .answer-container {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            perspective: 800px;
+        }
+
+        .flipper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flipper.flipped { transform: rotateX(180deg); }
+
+        .front, .back {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .front {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        
+        .back {
+            background: #fff;
+            border: 2px dashed var(--primary);
+            transform: rotateX(180deg);
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.1rem;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        /* 进度条 */
+        .progress-wrap { margin-top: auto; }
+        
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.full { background: var(--success); }
+
+        .progress-text {
+            font-size: 0.7rem;
+            text-align: right;
+            color: var(--text-muted);
+        }
+
+        /* 记忆按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .mem-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .know { background: var(--success); }
+        .forget { background: var(--danger); }
+        .reset { background: var(--reset); }
+        
+        .mem-btn:disabled { opacity: 0.3; filter: grayscale(1); }
+
+        /* ================= 移动端专项适配 (APK打包优化) ================= */
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            h1 { font-size: 1.4rem; }
+            
+            .control-bar { flex-direction: column; gap: 12px; padding: 10px; }
+            .global-controls { border-left: none; border-top: 1px solid #eee; padding: 10px 0 0; width: 100%; justify-content: space-around; }
+
+            .formula-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .formula-card { padding: 12px; gap: 8px; min-width: 0; }
+            .formula-row { font-size: 0.9rem; min-height: 36px; }
+            
+            /* 重点：移动端按钮三排并列且变小 */
+            .btn-group {
+                flex-direction: row; 
+                gap: 5px;
+            }
+            .mem-btn {
+                padding: 6px 0;
+                font-size: 0.7rem;
+                border-radius: 6px;
+            }
+
+            .answer-container { height: 48px; }
+            .back { font-size: 0.95rem; }
+            .front { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📐 高数公式记忆助手</h1>
+
+    <div class="nav">
+        <button class="nav-btn active" data-target="derivatives">求导</button>
+        <button class="nav-btn" data-target="integrals">积分</button>
+        <button class="nav-btn" data-target="limits">极限</button>
+        <button class="nav-btn" data-target="math">算数</button>
+    </div>
+
+    <div class="control-bar">
+        <div class="mode-group">
+            <button class="mode-btn query-mode" id="queryBtn">🔍 查询</button>
+            <button class="mode-btn recite-mode active" id="reciteBtn">🧠 背诵</button>
+        </div>
+        <div class="global-controls" id="globalBtns">
+            <button class="global-btn show-all" onclick="setAllMask(false)">🔓 翻开</button>
+            <button class="global-btn hide-all" onclick="setAllMask(true)">🔒 盖上</button>
+        </div>
+    </div>
+
+    <div id="content">
+        <div id="derivatives" class="module active">
+            <h2>导数公式</h2>
+            <div class="formula-grid" id="grid-derivatives"></div>
+        </div>
+        <div id="integrals" class="module">
+            <h2>积分公式</h2>
+            <div class="formula-grid" id="grid-integrals"></div>
+        </div>
+        <div id="limits" class="module">
+            <h2>极限公式</h2>
+            <h3 class="sub-title">▶ 等价无穷小</h3>
+            <div class="formula-grid" id="grid-limits_eq"></div>
+            <h3 class="sub-title" style="margin-top:20px;">▶ 重要极限</h3>
+            <div class="formula-grid" id="grid-limits_imp"></div>
+        </div>
+        <div id="math" class="module">
+            <h2>算数与三角</h2>
+            <h3 class="sub-title">▶ 三角变换</h3>
+            <div class="formula-grid" id="grid-math_trig"></div>
+            <h3 class="sub-title" style="margin-top:20px;">▶ 立方和差</h3>
+            <div class="formula-grid" id="grid-math_cube"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const formulaData = {
+    derivatives: [
+        { id: 'd1', q: '(C)\'', a: '0' },
+        { id: 'd2', q: '(x^μ)\'', a: 'μx^(μ-1)' },
+        { id: 'd3', q: '(√x)\'', a: '<span class="frac"><span class="num">1</span><span class="den">2√x</span></span>' },
+        { id: 'd4', q: '(<span class="frac"><span class="num">1</span><span class="den">x</span></span>)\'', a: '-<span class="frac"><span class="num">1</span><span class="den">x²</span></span>' },
+        { id: 'd5', q: '(e^x)\'', a: 'e^x' },
+        { id: 'd6', q: '(a^x)\'', a: 'a^x·lna' },
+        { id: 'd7', q: '(lnx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">x</span></span>' },
+        { id: 'd9', q: '(sinx)\'', a: 'cosx' },
+        { id: 'd10', q: '(cosx)\'', a: '-sinx' },
+        { id: 'd11', q: '(tanx)\'', a: 'sec²x' },
+        { id: 'd15', q: '(arcsinx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">√(1-x²)</span></span>' },
+        { id: 'd17', q: '(arctanx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">1+x²</span></span>' }
+    ],
+    integrals: [
+        { id: 'i1', q: '∫kdx', a: 'kx+C' },
+        { id: 'i2', q: '∫x^μdx', a: '<span class="frac"><span class="num">x^(μ+1)</span><span class="den">μ+1</span></span>+C' },
+        { id: 'i3', q: '∫<span class="frac"><span class="num">1</span><span class="den">x</span></span>dx', a: 'ln|x|+C' },
+        { id: 'i5', q: '∫e^xdx', a: 'e^x+C' },
+        { id: 'i6', q: '∫cosxdx', a: 'sinx+C' },
+        { id: 'i8', q: '∫sec²xdx', a: 'tanx+C' }
+    ],
+    limits_eq: [
+        { id: 'l1', q: 'sinx ~', a: 'x' },
+        { id: 'l2', q: 'tanx ~', a: 'x' },
+        { id: 'l5', q: 'ln(1+x) ~', a: 'x' },
+        { id: 'l8', q: '1-cosx ~', a: '<span class="frac"><span class="num">x²</span><span class="den">2</span></span>' }
+    ],
+    limits_imp: [
+        { id: 'l9', q: 'lim(n→∞) ⁿ√n', a: '1' },
+        { id: 'l11', q: 'lim(n→∞) <span class="frac"><span class="num">aⁿ</span><span class="den">n!</span></span>', a: '0' }
+    ],
+    math_trig: [
+        { id: 'm1', q: 'sin2α', a: '2sinαcosα' },
+        { id: 'm2', q: 'cos2α', a: 'cos²α-sin²α' },
+        { id: 'm6', q: 'sin²α(降幂)', a: '<span class="frac"><span class="num">1-cos2α</span><span class="den">2</span></span>' }
+    ],
+    math_cube: [
+        { id: 'm8', q: 'a³+b³', a: '(a+b)(a²-ab+b²)' },
+        { id: 'm9', q: 'a³-b³', a: '(a-b)(a²+ab+b²)' }
+    ]
+};
+
+const CONFIG = { stepAdd: 20, stepSub: 15, maxProgress: 100 };
+let currentMode = 'recite';
+
+function getProgress(id) { return parseInt(localStorage.getItem('mem_' + id)) || 0; }
+function setProgress(id, val) {
+    val = Math.max(0, Math.min(CONFIG.maxProgress, val));
+    localStorage.setItem('mem_' + id, val);
+    renderCard(id);
+}
+function isClickedToday(id) { return localStorage.getItem('lastClick_' + id) === new Date().toDateString(); }
+
+function init() {
+    Object.keys(formulaData).forEach(key => {
+        const grid = document.getElementById('grid-' + key);
+        if (!grid) return;
+        grid.innerHTML = formulaData[key].map(item => `
+            <div class="formula-card" id="card-${item.id}">
+                <div class="formula-row">${item.q}</div>
+                <div class="answer-container">
+                    <div class="flipper ${getProgress(item.id)>=100 ? 'flipped' : ''}" data-id="${item.id}" onclick="toggleFlip('${item.id}')">
+                        <div class="front">点击翻转</div>
+                        <div class="back">${item.a}</div>
+                    </div>
+                </div>
+                <div class="progress-wrap">
+                    <div class="progress-track"><div class="progress-fill ${getProgress(item.id)>=100?'full':''}" style="width:${getProgress(item.id)}%"></div></div>
+                    <div class="progress-text">${getProgress(item.id)}%</div>
+                </div>
+                <div class="btn-group">
+                    <button class="mem-btn know" id="know-${item.id}" onclick="doKnow('${item.id}')">记</button>
+                    <button class="mem-btn forget" id="forget-${item.id}" onclick="doForget('${item.id}')">忘</button>
+                    <button class="mem-btn reset" onclick="doReset('${item.id}')">清</button>
+                </div>
+            </div>
+        `).join('');
+    });
+    bindEvents();
+    syncModeUI();
+}
+
+function renderCard(id) {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+    const p = getProgress(id);
+    const fill = card.querySelector('.progress-fill');
+    fill.style.width = p + '%';
+    p >= 100 ? fill.classList.add('full') : fill.classList.remove('full');
+    card.querySelector('.progress-text').textContent = p + '%';
+    const flipper = card.querySelector('.flipper');
+    p >= 100 ? flipper.classList.add('flipped') : null;
+    syncBtnState(id);
+}
+
+function toggleFlip(id) {
+    if (currentMode === 'query') return;
+    document.querySelector(`.flipper[data-id="${id}"]`).classList.toggle('flipped');
+}
+
+function setAllMask(hide) {
+    document.querySelectorAll('.flipper').forEach(f => {
+        if (getProgress(f.dataset.id) < 100) hide ? f.classList.remove('flipped') : f.classList.add('flipped');
+    });
+}
+
+function doKnow(id) {
+    if (isClickedToday(id)) return alert('今日已达标');
+    localStorage.setItem('lastClick_' + id, new Date().toDateString());
+    setProgress(id, getProgress(id) + CONFIG.stepAdd);
+}
+
+function doForget(id) {
+    if (isClickedToday(id)) return alert('今日已达标');
+    localStorage.setItem('lastClick_' + id, new Date().toDateString());
+    setProgress(id, getProgress(id) - CONFIG.stepSub);
+}
+
+function doReset(id) {
+    localStorage.removeItem('mem_' + id);
+    localStorage.removeItem('lastClick_' + id);
+    const flipper = document.querySelector(`.flipper[data-id="${id}"]`);
+    flipper.classList.remove('flipped');
+    renderCard(id);
+}
+
+function syncBtnState(id) {
+    const disabled = isClickedToday(id);
+    const k = document.getElementById(`know-${id}`);
+    const f = document.getElementById(`forget-${id}`);
+    if(k) k.disabled = disabled;
+    if(f) f.disabled = disabled;
+}
+
+function syncModeUI() {
+    const isQuery = currentMode === 'query';
+    document.getElementById('globalBtns').style.display = isQuery ? 'none' : 'flex';
+    document.querySelectorAll('.progress-wrap, .btn-group').forEach(el => el.style.display = isQuery ? 'none' : 'flex');
+    document.querySelectorAll('.flipper').forEach(f => isQuery ? f.classList.add('flipped') : (getProgress(f.dataset.id)<100 && f.classList.remove('flipped')));
+}
+
+function bindEvents() {
+    document.getElementById('queryBtn').onclick = () => { currentMode = 'query'; updateModeBtns(); syncModeUI(); };
+    document.getElementById('reciteBtn').onclick = () => { currentMode = 'recite'; updateModeBtns(); syncModeUI(); };
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.module, .nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(btn.dataset.target).classList.add('active');
+            btn.classList.add('active');
+        };
+    });
+}
+
+function updateModeBtns() {
+    document.getElementById('queryBtn').classList.toggle('active', currentMode==='query');
+    document.getElementById('reciteBtn').classList.toggle('active', currentMode==='recite');
+}
+
+init();
+</script>
+</body>
 </html>
