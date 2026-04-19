@@ -1,301 +1,443 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>高数公式记忆助手</title>
     <style>
-        /* 学术中性色彩体系 */
+        /* 学术中性色彩体系 & 全局动态变量（默认莫兰迪普通模式） */
         :root {
-            --primary: #4f46e5;
-            --success: #059669;
-            --danger: #dc2626;
-            --warning: #d97706;
-            --reset: #6b7280;
-            --bg-color: #f3f4f6; /* 加深一点背景以凸显卡片 */
+            --primary: #7b8b88;
+            --success: #8ba989;
+            --danger: #b5838d;
+            --warning: #ccb7ae;
+            --reset: #9ca3af;
+            --bg-color: #f5f4f1; 
             --card-bg: #ffffff;
-            --text-main: #111827;
-            --text-muted: #6b7280;
-            --border-color: #e5e7eb;
+            --text-main: #4a4a4a;
+            --text-muted: #8b8b8b;
+            --border-color: #e2e1dd;
             --nav-height: 65px;
+            --card-zoom: 1;
+            --formula-font-size: 1.25rem;
+            --base-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --math-font: 'Times New Roman', Times, serif;
+            /* 优化：增加卡片的基础宽度限制，防止过于狭窄导致折行 */
+            --grid-cols: repeat(auto-fill, minmax(175px, 1fr));
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        /* 极简模式：去除所有色彩 */
+        html[data-color="minimalist"] {
+            --primary: #222222; --success: #444444; --danger: #111111; --warning: #333333; --reset: #555555;
+            --bg-color: #ffffff; --card-bg: #fdfdfd; --text-main: #000000; --text-muted: #666666; --border-color: #d1d5db;
         }
 
-        /* 惯性滚动核心设置 */
-        html, body {
-            height: 100%;
-            background: var(--bg-color);
-            color: var(--text-main);
-            /* 开启 iOS/Android 原生平滑惯性滚动与回弹 */
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: auto; 
+        /* 炫酷(赛博)模式：高对比霓虹色 */
+        html[data-color="cyberpunk"] {
+            --primary: #ff00ff; --success: #00ffff; --danger: #ff003c; --warning: #fcee0a; --reset: #666666;
+            --bg-color: #050510; --card-bg: #100f1a; --text-main: #e0e0e0; --text-muted: #a0a0a0; --border-color: #ff00ff;
         }
 
-        body {
-            padding-bottom: calc(var(--nav-height) + 20px);
-            overflow-y: auto;
-            overflow-x: hidden;
+        /* 深色模式 */
+        html[data-dark="dark"] {
+            --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #f3f4f6; --text-muted: #9ca3af; --border-color: #374151;
         }
 
-        /* 顶部控制栏 */
-        .top-control {
-            position: sticky;
-            top: 0;
-            z-index: 90;
-            background: rgba(243, 244, 246, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .mode-group {
-            display: flex;
-            background: rgba(0,0,0,0.06);
-            padding: 4px;
-            border-radius: 10px;
-            justify-content: center;
-        }
-        .mode-btn {
-            flex: 1;
-            padding: 8px 0;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--base-font); -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg-color); color: var(--text-main); transition: background 0.4s, color 0.4s; }
+
+        .app-wrapper { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; }
+        .scroll-view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; padding-bottom: 30px; }
+        
+        .bottom-bars-container { flex-shrink: 0; position: relative; height: calc(var(--nav-height) + env(safe-area-inset-bottom)); background: #1f2937; z-index: 100; }
+
+        .top-control { position: sticky; top: 0; z-index: 90; background: rgba(var(--bg-color), 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 15px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border-color); transition: all 0.3s; }
+        .mode-group { display: flex; background: rgba(0,0,0,0.06); padding: 4px; border-radius: 10px; justify-content: center; }
+        html[data-dark="dark"] .mode-group { background: rgba(255,255,255,0.1); }
+        .mode-btn { flex: 1; padding: 8px 0; border: none; border-radius: 8px; font-weight: 600; background: transparent; color: var(--text-muted); font-size: 0.9rem; transition: all 0.3s ease; }
         .mode-btn.active.query-mode { background: #0284c7; color: white; box-shadow: 0 4px 10px rgba(2,132,199,0.3); }
-        .mode-btn.active.recite-mode { background: var(--warning); color: white; box-shadow: 0 4px 10px rgba(217,119,6,0.3); }
+        .mode-btn.active.recite-mode { background: var(--warning); color: white; box-shadow: 0 4px 10px rgba(var(--warning),0.3); }
         
         .global-controls { display: flex; gap: 10px; justify-content: center; }
         .global-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 0.9rem; transition: transform 0.1s; }
         .global-btn:active { transform: scale(0.95); }
-        .show-all { background: var(--success); box-shadow: 0 4px 10px rgba(5,150,105,0.3); }
-        .hide-all { background: var(--danger); box-shadow: 0 4px 10px rgba(220,38,38,0.3); }
+        .show-all { background: var(--success); } .hide-all { background: var(--danger); }
+
+        /* 设置顶栏 */
+        .settings-top { display: none; position: sticky; top: 0; z-index: 95; background: var(--card-bg); padding: 10px 15px 15px; flex-direction: column; border-bottom: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        body.settings-active .top-control { display: none; } body.settings-active .settings-top { display: flex; }
+        .settings-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 15px; }
+        .s-tab { flex: 1; text-align: center; padding: 10px; font-weight: bold; color: var(--text-muted); font-size: 0.95rem; cursor: pointer; transition: color 0.2s; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .s-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        .s-panel { display: none; flex-direction: column; gap: 15px; animation: fadeIn 0.3s; } .s-panel.active { display: flex; }
+        .st-row { display: flex; flex-direction: column; gap: 8px; }
+        .st-header { display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
+        .st-slider { width: 100%; accent-color: var(--primary); }
+        .st-layout-btns { display: flex; gap: 8px; }
+        .layout-btn, .theme-btn, .mode-toggle-btn { flex: 1; padding: 6px 0; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+        .layout-btn.active, .theme-btn.active, .mode-toggle-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .m-select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-main); font-weight: bold; outline: none; }
 
         .container { padding: 15px; }
-        
-        /* 模块进场动效 */
-        .module { display: none; animation: fadeInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1); }
-        .module.active { display: block; }
-        @keyframes fadeInUp { 
-            from { opacity: 0; transform: translateY(20px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
+        .module { display: none; animation: fadeInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1); } .module.active { display: block; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .sub-title { color: var(--text-muted); font-size: 0.95rem; margin: 20px 0 12px; padding-left: 10px; border-left: 4px solid var(--border-color); font-weight: 700; }
 
-        .sub-title {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin: 20px 0 12px;
-            padding-left: 10px;
-            border-left: 4px solid #cbd5e1;
-            font-weight: 700;
-        }
+        /* 公式网格 */
+        .formula-grid { display: grid; grid-template-columns: var(--grid-cols); gap: 12px; min-height: 80px; border-radius: 12px; padding: 4px; }
 
-        /* 公式网格 (拖拽容器) */
-        .formula-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
-            min-height: 80px; /* 保证空网格也有区域可以拖入 */
-            border-radius: 12px;
-            transition: background 0.3s, border 0.3s;
-            padding: 4px; /* 给拖入边框留余地 */
-        }
-        /* 网格拖入高亮提示 */
-        .formula-grid.grid-drag-over {
-            background: rgba(79, 70, 229, 0.05);
-            border: 2px dashed rgba(79, 70, 229, 0.4);
-        }
+        /* 优化：大幅度压缩内部无用留白（padding、gap降至6px），给公式让出更多空间 */
+        .formula-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: calc(6px * var(--card-zoom)); display: flex; flex-direction: column; gap: calc(6px * var(--card-zoom)); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s, border-color 0.3s; overflow: hidden; }
+        .formula-card.draggable { cursor: grab; touch-action: none; }
+        .formula-card.dragging { opacity: 0.8; transform: scale(1.05) rotate(2deg); box-shadow: 0 15px 25px rgba(0,0,0,0.15); z-index: 100; border-color: var(--primary); }
+        .formula-card.card-drag-over { border: 2px dashed var(--primary); transform: scale(0.98); }
 
-        /* 公式卡片 */
-        .formula-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 14px;
+        .scroll-container {
+            width: 100%;
+            height: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            position: relative;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            /* 卡片本身的弹性过渡 */
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, opacity 0.2s;
+            align-items: center; /* 确保滚动区域在框内居中 */
         }
+        .scroll-container::-webkit-scrollbar { display: none; }
         
-        /* 拖拽态弹性动效 */
-        .formula-card.draggable { cursor: grab; touch-action: none; /* 防止移动端拖拽时页面滚动 */ }
-        .formula-card.dragging {
-            opacity: 0.8;
-            transform: scale(1.05) rotate(2deg);
-            box-shadow: 0 15px 25px rgba(0,0,0,0.15);
-            z-index: 100;
-            border-color: var(--primary);
-        }
-        .formula-card.card-drag-over { 
-            border: 2px dashed var(--primary); 
-            transform: scale(0.98);
+        /* 核心修复：不挤压滑动层！抛弃 flex 导致的分式计算偏移，利用 inline-block 原生基线排版 */
+        .scroll-content {
+            margin: 0 auto; 
+            display: inline-block; /* 恢复原生行内块，彻底解决错位 */
+            white-space: nowrap;
+            padding: 10px 4px; /* 增加上下安全缓冲区域，避免括号或下角标触底被挡 */
+            line-height: 1.2;
         }
 
-        .formula-row {
-            font-size: 1.05rem;
-            font-weight: 700;
-            text-align: center;
-            font-family: 'Times New Roman', Times, serif;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        /* 优化：增大题目框的整体空间 */
+        .formula-row { font-weight: 700; font-size: calc(var(--formula-font-size) * var(--card-zoom)); font-family: var(--math-font); min-height: calc(52px * var(--card-zoom)); }
 
-        /* 数学分式/上标 */
+        /* 数学引擎原生对齐 */
         .sup { font-size: 0.75em; vertical-align: super; }
+        
+        /* 彻底修复偏移：vertical-align: middle 会将分式横杠与减号、等号完美对其 */
         .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 4px; font-size: 0.9em; }
         .frac .num { padding: 0 8px; border-bottom: 1.5px solid currentColor; line-height: 1.3; }
         .frac .den { padding: 0 8px; line-height: 1.3; }
+        
+        .lim-wrap { display: inline-flex; position: relative; align-items: center; justify-content: center; margin-right: 6px; vertical-align: baseline; }
+        .lim-text { line-height: 1; } 
+        .lim-sub { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 0.65em; white-space: nowrap; margin-top: 1px; font-weight: normal; }
 
-        /* 答案蒙版 - 3D翻转 */
-        .answer-container { position: relative; width: 100%; min-height: 55px; perspective: 1000px; }
-        .flipper { width: 100%; height: 100%; position: relative; transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
+        /* 优化：增大答案框的整体空间 */
+        .answer-container { position: relative; width: 100%; min-height: calc(60px * var(--card-zoom)); perspective: 1000px; }
+        .flipper { width: 100%; height: 100%; position: relative; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
         .flipper.flipped { transform: rotateX(180deg); }
-        .front, .back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-        .front { background: #f8fafc; border: 1px solid #e2e8f0; color: #94a3b8; font-size: 0.9rem; cursor: pointer; font-weight: bold; }
-        .front:active { background: #f1f5f9; }
-        .back { background: #fff; border: 2px dashed rgba(79, 70, 229, 0.3); transform: rotateX(180deg); color: var(--primary); font-weight: bold; font-size: 1.05rem; font-family: 'Times New Roman', Times, serif; text-align: center; }
+        .front, .back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 5px; box-shadow: inset 0 0 5px rgba(0,0,0,0.02);}
+        .front { background: rgba(0,0,0,0.03); border: 1px solid var(--border-color); color: var(--text-muted); font-size: calc(0.9rem * var(--card-zoom)); font-weight: bold; }
+        html[data-dark="dark"] .front { background: rgba(255,255,255,0.05); }
+        .back { background: var(--bg-color); border: 1px dashed var(--primary); transform: rotateX(180deg); color: var(--primary); font-weight: bold; font-size: calc(var(--formula-font-size) * var(--card-zoom)); font-family: var(--math-font); }
 
         /* 进度条 & 按钮组 */
-        .progress-track { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);}
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #60a5fa, #3b82f6); transition: width 0.4s ease; border-radius: 4px;}
-        .progress-fill.full { background: linear-gradient(90deg, #34d399, #10b981); }
-        .progress-text { font-size: 0.75rem; text-align: right; color: var(--text-muted); font-weight: 500;}
+        .progress-track { width: 100%; height: 4px; background: rgba(0,0,0,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+        html[data-dark="dark"] .progress-track { background: rgba(255,255,255,0.1); }
+        .progress-fill { height: 100%; background: var(--primary); transition: width 0.4s ease;}
+        .progress-fill.full { background: var(--success); }
+        .progress-text { font-size: calc(0.7rem * var(--card-zoom)); text-align: right; color: var(--text-muted); font-weight: 500;}
 
-        .btn-group { display: flex; gap: 8px; }
-        .mem-btn { flex: 1; padding: 8px 0; border: none; border-radius: 8px; color: white; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: transform 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-group { display: flex; gap: 6px; }
+        .mem-btn { flex: 1; padding: calc(6px * var(--card-zoom)) 0; border: none; border-radius: 6px; color: white; font-size: calc(0.8rem * var(--card-zoom)); font-weight: 600; cursor: pointer; transition: all 0.1s; }
         .mem-btn:active:not(:disabled) { transform: scale(0.9); }
-        .know { background: var(--success); }
-        .forget { background: var(--danger); }
-        .reset { background: var(--reset); }
+        .know { background: var(--success); } .forget { background: var(--danger); } .reset { background: var(--reset); }
         .mem-btn:disabled { opacity: 0.3; filter: grayscale(1); box-shadow: none; }
 
-        /* ================= 底部导航栏 ================= */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0; left: 0; width: 100%;
-            height: var(--nav-height);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border-top: 1px solid rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.03);
-        }
-        .nav-item {
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: #94a3b8; font-size: 0.75rem; font-weight: 700; cursor: pointer; height: 100%; transition: color 0.2s;
-        }
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { font-size: 1.3rem; margin-bottom: 3px; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .nav-item.active .nav-icon { transform: translateY(-2px) scale(1.1); }
+        /* ================= 极简 & 赛博朋克极繁动效 ================= */
+        html[data-color="minimalist"] .mem-btn, html[data-color="minimalist"] .global-btn { background: transparent; color: var(--text-main); border: 1px solid var(--border-color); }
+        html[data-color="minimalist"] .mem-btn.know { color: #000; border-color: #000; } html[data-color="minimalist"] .mem-btn.forget { color: #555; border-color: #555; }
+        html[data-color="minimalist"] .mem-btn:disabled { opacity: 0.15; border-style: dashed; }
+        html[data-color="minimalist"][data-dark="dark"] .mem-btn.know { color: #fff; border-color: #fff; } html[data-color="minimalist"][data-dark="dark"] .mem-btn.forget { color: #aaa; border-color: #aaa; }
 
-        /* ================= 我的页面 ================= */
-        .profile-card { background: white; border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.02);}
-        .avatar-wrap { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; }
-        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary); cursor: pointer; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);}
-        .avatar-hint { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; font-size: 0.65rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap;}
-        .nickname-input { text-align: center; border: none; border-bottom: 2px dashed #cbd5e1; font-size: 1.3rem; font-weight: 800; color: var(--text-main); width: 70%; padding: 5px; outline: none; background: transparent; transition: border-color 0.2s;}
-        .nickname-input:focus { border-color: var(--primary); }
+        @keyframes extreme-jelly { 0%, 100% { transform: scale(1, 1); } 25% { transform: scale(0.7, 1.3); } 50% { transform: scale(1.3, 0.7); } 75% { transform: scale(0.85, 1.15); } }
         
-        .stats-wrap { display: flex; justify-content: space-around; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); }
-        .stat-box { display: flex; flex-direction: column; }
-        .stat-num { font-size: 1.8rem; font-weight: 900; color: var(--text-main); }
-        .stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
-
-        .settings-entry { margin-top: 30px; display: block; width: 100%; padding: 14px; background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; text-align: center; border-radius: 14px; font-weight: bold; font-size: 1.05rem; cursor: pointer; box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3); transition: transform 0.1s; }
-        .settings-entry:active { transform: scale(0.96); }
-
-        /* ================= 设置模式专属 UI ================= */
-        body.settings-active .top-control { opacity: 0; pointer-events: none; height: 0; padding: 0; overflow: hidden; }
-        body.settings-active .progress-wrap, body.settings-active .btn-group { display: none; }
-        body.settings-active .flipper { transform: rotateX(180deg); } /* 强制翻开 */
-        
-        .settings-bottom-bar {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: calc(var(--nav-height) + 10px);
-            background: #1f2937; color: white;
-            display: flex; justify-content: space-around; align-items: center;
-            z-index: 101; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1);
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+        @keyframes cyber-glitch { 
+            0%   { transform: rotateX(180deg) translate(0) } 
+            20%  { transform: rotateX(180deg) translate(-3px, 1px) } 
+            40%  { transform: rotateX(180deg) translate(-1px, -2px) } 
+            60%  { transform: rotateX(180deg) translate(2px, 2px) } 
+            80%  { transform: rotateX(180deg) translate(2px, -1px) } 
+            100% { transform: rotateX(180deg) translate(0) } 
         }
+        
+        html[data-color="cyberpunk"] .formula-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 8px rgba(255,0,255,0.2); }
+        html[data-color="cyberpunk"] .flipper { transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        html[data-color="cyberpunk"] .flipper.flipped { transform: rotateX(180deg) scale(1.05); box-shadow: 0 15px 30px rgba(0,255,255,0.4); border-radius: 12px; }
+        html[data-color="cyberpunk"] .mem-btn:active:not(:disabled) { animation: extreme-jelly 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        html[data-color="cyberpunk"] .flipper.flipped .back { animation: cyber-glitch 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; box-shadow: inset 0 0 15px rgba(0,255,255,0.4); text-shadow: 0 0 8px var(--success); color: var(--success); border: 2px solid var(--success); }
+        html[data-color="cyberpunk"] .mem-btn { background: transparent; border: 2px solid currentColor; box-shadow: inset 0 0 8px currentColor; }
+        html[data-color="cyberpunk"] .mem-btn.know { color: var(--success); } html[data-color="cyberpunk"] .mem-btn.forget { color: var(--danger); } html[data-color="cyberpunk"] .mem-btn.reset { color: var(--primary); }
+
+        /* 导航 */
+        .bottom-nav { position: absolute; inset: 0; background: rgba(var(--card-bg), 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1); }
+        body.settings-active .bottom-nav { transform: translateY(100%); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; cursor: pointer; height: 100%; transition: color 0.2s; }
+        .nav-item.active { color: var(--primary); } .nav-icon { font-size: 1.3rem; margin-bottom: 3px; transition: transform 0.2s; } .nav-item.active .nav-icon { transform: translateY(-2px) scale(1.1); }
+        .settings-bottom-bar { position: absolute; inset: 0; background: #1f2937; color: white; display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); transform: translateY(100%); transition: transform 0.3s; }
         body.settings-active .settings-bottom-bar { transform: translateY(0); }
-        
-        .set-action { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: background 0.2s;}
-        .set-action i { font-size: 1.5rem; margin-bottom: 4px; }
-        .set-action.drop-danger { background: rgba(220, 38, 38, 0.2); border-left: 1px solid #374151; }
-        .set-action.drop-danger.drag-over { background: var(--danger); }
-        .set-action.drop-warning { background: rgba(217, 119, 6, 0.2); border-left: 1px solid #374151; }
-        .set-action.drop-warning.drag-over { background: var(--warning); }
+        .set-action { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; cursor: pointer; font-size: 0.8rem; font-weight: 600;}
+        .set-action i { font-size: 1.5rem; margin-bottom: 4px; } .set-action.drop-danger { background: rgba(220, 38, 38, 0.2); border-left: 1px solid #374151; } .set-action.drop-warning { background: rgba(217, 119, 6, 0.2); border-left: 1px solid #374151; }
 
-        /* 隐藏库抽屉 */
-        .hidden-drawer {
-            position: fixed; bottom: calc(var(--nav-height) + 10px); left: 0; width: 100%; height: 55vh;
-            background: #f8fafc; border-top-left-radius: 24px; border-top-right-radius: 24px;
-            box-shadow: 0 -10px 25px rgba(0,0,0,0.2); z-index: 99; transform: translateY(120%); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-        }
-        .hidden-drawer.open { transform: translateY(0); }
-        .drawer-title { text-align: center; font-weight: 800; margin-bottom: 15px; color: #334155; font-size: 1.1rem;}
+        .hidden-drawer { position: absolute; bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); left: 0; width: 100%; height: 55vh; background: var(--bg-color); border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -10px 25px rgba(0,0,0,0.2); z-index: 99; transform: translateY(120%); transition: transform 0.4s; padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); }
+        .hidden-drawer.open { transform: translateY(0); } .drawer-title { text-align: center; font-weight: 800; margin-bottom: 15px; color: var(--text-main);}
 
-        /* 模态框 */
+        /* 我的页面 & 图表模块 */
+        .profile-card { background: var(--card-bg); border-radius: 16px; padding: 25px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid var(--border-color);}
+        .avatar-wrap { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; } .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary); cursor: pointer; } .avatar-hint { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; font-size: 0.65rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap;}
+        .nickname-input { text-align: center; border: none; border-bottom: 2px dashed var(--border-color); font-size: 1.3rem; font-weight: 800; color: var(--text-main); width: 70%; padding: 5px; outline: none; background: transparent;}
+        .stats-wrap { display: flex; justify-content: space-around; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .stat-box { display: flex; flex-direction: column; } .stat-num { font-size: 1.6rem; font-weight: 900; color: var(--text-main); } .stat-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600;}
+        .settings-entry { margin-top: 20px; display: block; width: 100%; padding: 14px; background: var(--primary); color: white; text-align: center; border-radius: 14px; font-weight: bold; font-size: 1.05rem; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        html[data-color="cyberpunk"] .settings-entry { border: 1px solid var(--primary); background: transparent; text-shadow: 0 0 5px var(--primary); box-shadow: inset 0 0 10px var(--primary); }
+
+        /* 图表卡片面板 */
+        .chart-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color); cursor: pointer; position: relative; overflow: hidden; transition: transform 0.2s; }
+        .chart-card:active { transform: scale(0.98); }
+        .chart-title { font-size: 1rem; font-weight: bold; color: var(--text-main); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .chart-title span.hint { font-size: 0.75rem; color: var(--primary); background: rgba(123, 139, 136, 0.1); padding: 3px 8px; border-radius: 8px; }
+        .charts-container { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+        .pie-container { width: 80px; height: 80px; position: relative; }
+        .pie-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .pie-circle-bg { fill: none; stroke: var(--border-color); stroke-width: 4; }
+        .pie-circle-fill { fill: none; stroke: var(--success); stroke-width: 4; stroke-dasharray: 0 100; transition: stroke-dasharray 1s ease-out; }
+        .pie-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; color: var(--text-main); }
+        .line-container { flex: 1; height: 70px; }
+        .line-svg { width: 100%; height: 100%; overflow: visible; }
+        .line-forget { fill: none; stroke: var(--danger); stroke-width: 2; opacity: 0.5; stroke-dasharray: 4; }
+        .line-memory { fill: none; stroke: var(--primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* 全屏调度中心 */
+        .review-dashboard { position: fixed; inset: 0; background: var(--bg-color); z-index: 300; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1); }
+        .review-dashboard.open { transform: translateX(0); }
+        .rd-header { padding: 20px 15px; background: var(--card-bg); display: flex; align-items: center; gap: 15px; border-bottom: 1px solid var(--border-color); font-size: 1.2rem; font-weight: bold; color: var(--text-main); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .rd-back { padding: 5px 10px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+        .rd-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .rd-card { background: var(--card-bg); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .rd-card-title { font-weight: bold; margin-bottom: 12px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .rd-list { display: flex; flex-direction: column; gap: 8px; }
+        .rd-item { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 8px; background: rgba(0,0,0,0.02); border-radius: 8px; color: var(--text-muted); font-weight: bold; }
+        html[data-dark="dark"] .rd-item { background: rgba(255,255,255,0.05); }
+        .rd-item span.due { color: var(--danger); }
+
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(3px); animation: fadeIn 0.3s;}
-        .modal-content { background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: scale(0.95); animation: popIn 0.3s forwards;}
+        .modal-content { background: var(--card-bg); color: var(--text-main); padding: 25px; border-radius: 16px; width: 85%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: scale(0.95); animation: popIn 0.3s forwards;}
         @keyframes popIn { to { transform: scale(1); } }
-        .modal-title { font-weight: 800; margin-bottom: 15px; font-size: 1.2rem; text-align: center; color: var(--text-main);}
-        .m-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; outline: none; transition: border 0.2s;}
-        .m-input:focus { border-color: var(--primary); }
-        .m-select { width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 10px; font-weight: bold; outline: none;}
+        .modal-title { font-weight: 800; margin-bottom: 15px; font-size: 1.2rem; text-align: center; }
+        .m-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); border-radius: 10px; font-size: 1rem; outline: none; }
         .m-btns { display: flex; gap: 12px; }
-        .m-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: transform 0.1s;}
-        .m-btn:active { transform: scale(0.95); }
-        .btn-cancel { background: #f1f5f9; color: #475569; }
+        .m-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-cancel { background: var(--border-color); color: var(--text-main); }
         .btn-save { background: var(--primary); color: white; }
     </style>
 </head>
 <body>
 
+<div class="app-wrapper">
+    <div class="scroll-view" id="scrollView">
+        <div class="top-control" id="topControl">
+            <div class="mode-group">
+                <button class="mode-btn query-mode" id="queryBtn">🔍 沉浸查询</button>
+                <button class="mode-btn recite-mode active" id="reciteBtn">🧠 背诵模式</button>
+            </div>
+            <div class="global-controls" id="globalBtns">
+                <button class="global-btn show-all" onclick="setAllMask(false)">🔓 翻开全部</button>
+                <button class="global-btn hide-all" onclick="setAllMask(true)">🔒 盖上全部</button>
+            </div>
+        </div>
+
+        <div class="settings-top" id="settingsTop">
+            <div class="settings-tabs">
+                <div class="s-tab active" onclick="switchSettingsTab('card')">🔧 卡片排版</div>
+                <div class="s-tab" onclick="switchSettingsTab('global')">🎨 全局主题</div>
+            </div>
+            <div id="settings-card" class="s-panel active">
+                <div class="st-row">
+                    <div class="st-header"><span>卡片整体缩放</span><span id="zoomLabel">100%</span></div>
+                    <input type="range" id="zoomSlider" class="st-slider" min="70" max="150" value="100" step="5">
+                </div>
+                <div class="st-row">
+                    <div class="st-header"><span>公式字体大小</span><span id="fontSizeLabel">125%</span></div>
+                    <input type="range" id="fontSizeSlider" class="st-slider" min="80" max="200" value="125" step="5">
+                </div>
+                <div class="st-row">
+                    <div class="st-header"><span>屏幕排版列数</span></div>
+                    <div class="st-layout-btns">
+                        <button class="layout-btn" onclick="setLayout('1', this)">1 列</button>
+                        <button class="layout-btn" onclick="setLayout('2', this)">2 列</button>
+                        <button class="layout-btn" onclick="setLayout('3', this)">3 列</button>
+                        <button class="layout-btn active" id="autoLayoutBtn" onclick="setLayout('auto', this)">自适应</button>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-global" class="s-panel">
+                <div class="st-row">
+                    <div class="st-header"><span>全局字体样式</span></div>
+                    <select id="fontFamilySelect" class="m-select" onchange="setFontFamily(this.value)">
+                        <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">系统默认</option>
+                        <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                        <option value="SimSun, serif">宋体</option>
+                        <option value="KaiTi, serif">楷体</option>
+                        <option value="'Courier New', Courier, monospace">等宽(Courier)</option>
+                    </select>
+                </div>
+                <div class="st-row">
+                    <div class="st-header"><span>色彩主题</span></div>
+                    <div class="st-layout-btns">
+                        <button class="theme-btn active" id="theme-normal" onclick="setColorTheme('normal')">莫兰迪(普通)</button>
+                        <button class="theme-btn" id="theme-minimalist" onclick="setColorTheme('minimalist')">极简去色</button>
+                        <button class="theme-btn" id="theme-cyberpunk" onclick="setColorTheme('cyberpunk')">赛博朋克</button>
+                    </div>
+                </div>
+                <div class="st-row">
+                    <div class="st-header"><span>日夜模式</span></div>
+                    <div class="st-layout-btns">
+                        <button class="mode-toggle-btn active" id="dark-light" onclick="setDarkMode('light')">☀️ 普通</button>
+                        <button class="mode-toggle-btn" id="dark-dark" onclick="setDarkMode('dark')">🌙 深色</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container" id="content">
+            <div id="derivatives" class="module active">
+                <div class="sub-title">▶ 导数核心公式</div>
+                <div class="formula-grid drop-zone" id="grid-derivatives" data-cat="derivatives"></div>
+            </div>
+            <div id="integrals" class="module">
+                <div class="sub-title">▶ 积分核心公式</div>
+                <div class="formula-grid drop-zone" id="grid-integrals" data-cat="integrals"></div>
+            </div>
+            <div id="limits" class="module">
+                <div class="sub-title">▶ 等价无穷小</div>
+                <div class="formula-grid drop-zone" id="grid-limits_eq" data-cat="limits_eq"></div>
+                <div class="sub-title" style="margin-top:20px;">▶ 重要极限</div>
+                <div class="formula-grid drop-zone" id="grid-limits_imp" data-cat="limits_imp"></div>
+            </div>
+            <div id="math" class="module">
+                <div class="sub-title">▶ 三角变换</div>
+                <div class="formula-grid drop-zone" id="grid-math_trig" data-cat="math_trig"></div>
+                <div class="sub-title" style="margin-top:20px;">▶ 立方和差</div>
+                <div class="formula-grid drop-zone" id="grid-math_cube" data-cat="math_cube"></div>
+            </div>
+            
+            <div id="profile" class="module">
+                <div class="profile-card">
+                    <div class="avatar-wrap">
+                        <img id="avatarImg" class="avatar" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NjYyI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC43MS0xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMi4wMSAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4=">
+                        <div class="avatar-hint">更换头像</div>
+                        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+                    </div>
+                    <input type="text" id="nicknameInput" class="nickname-input" value="高数达人">
+                    <div class="stats-wrap">
+                        <div class="stat-box"><span class="stat-num" id="statCheckin" style="color:var(--primary)">0</span><span class="stat-label">打卡天数</span></div>
+                        <div class="stat-box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">公式总数</span></div>
+                        <div class="stat-box"><span class="stat-num" id="statMastered" style="color:var(--success)">0</span><span class="stat-label">已掌握</span></div>
+                    </div>
+                    <div class="settings-entry" onclick="enterSettings()">⚙️ 进入高级设置与重排整理</div>
+                </div>
+
+                <div class="chart-card" onclick="document.getElementById('reviewDashboard').classList.add('open')">
+                    <div class="chart-title">🧠 SRS 间隔重复记忆引擎 <span class="hint">点击进入调度中心 &gt;</span></div>
+                    <div class="charts-container">
+                        <div class="pie-container">
+                            <svg viewBox="0 0 36 36" class="pie-svg">
+                                <path class="pie-circle-bg" d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"/>
+                                <path class="pie-circle-fill" id="chartPie" d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"/>
+                            </svg>
+                            <div class="pie-text" id="chartPieText">0%</div>
+                        </div>
+                        <div class="line-container">
+                            <svg viewBox="0 0 100 40" class="line-svg" preserveAspectRatio="none">
+                                <polyline points="0,35 20,25 40,30 60,15 80,20 100,5" class="line-forget"/>
+                                <polyline id="chartLine" points="0,35 20,35" class="line-memory"/>
+                            </svg>
+                            <div style="font-size:0.65rem; color:var(--text-muted); text-align:right; margin-top:5px;">模拟遗忘/记忆抗性曲线</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> 
+
+    <div class="hidden-drawer" id="hiddenDrawer">
+        <div class="drawer-title">📦 隐藏库 (将卡片拖出以恢复)</div>
+        <div class="formula-grid drop-zone" id="grid-hidden" data-cat="hidden" style="min-height: 120px; padding: 10px; border: 2px dashed var(--border-color); border-radius: 12px;"></div>
+    </div>
+
+    <div class="bottom-bars-container">
+        <div class="bottom-nav" id="mainNav">
+            <div class="nav-item active" data-target="derivatives"><div class="nav-icon">📈</div>求导</div>
+            <div class="nav-item" data-target="integrals"><div class="nav-icon">∫</div>积分</div>
+            <div class="nav-item" data-target="limits"><div class="nav-icon">∞</div>极限</div>
+            <div class="nav-item" data-target="math"><div class="nav-icon">▵</div>算数</div>
+            <div class="nav-item" data-target="profile"><div class="nav-icon">👤</div>我的</div>
+        </div>
+
+        <div class="settings-bottom-bar">
+            <div class="set-action" onclick="exitSettings()"><i style="color:var(--success)">✔</i>完成退出</div>
+            <div class="set-action" onclick="document.getElementById('addModal').style.display='flex'"><i style="color:#60a5fa">➕</i>手动新增</div>
+            <div class="set-action drop-warning" id="hideDropZone" onclick="toggleDrawer()"><i>📦</i>收进隐藏库</div>
+            <div class="set-action drop-danger" id="deleteDropZone"><i>🗑️</i>拖入删除</div>
+        </div>
+    </div>
+</div> 
+
+<div id="reviewDashboard" class="review-dashboard">
+    <div class="rd-header">
+        <div class="rd-back" onclick="document.getElementById('reviewDashboard').classList.remove('open')">⬅</div>
+        <div>学习调度中心</div>
+    </div>
+    <div class="rd-content">
+        <div class="rd-card">
+            <div class="rd-card-title">⚙️ 算法抗性设置</div>
+            <select id="srsIntensity" class="m-select" onchange="changeSRSIntensity(this.value)">
+                <option value="low">轻松 (遗忘曲线平缓，复习间隔长)</option>
+                <option value="medium">中等 (默认艾宾浩斯标准)</option>
+                <option value="high">高强度 (遗忘曲线陡峭，频繁巩固)</option>
+                <option value="custom">自定义高级设置</option>
+            </select>
+            <div id="customSrsBox" style="display:none; flex-direction:column; gap:10px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                <div style="font-size:0.8rem; color:var(--text-muted);">100熟练度默认间隔 (天)</div>
+                <input type="number" id="srsCustomBase" class="m-input" value="7" style="margin-bottom:0; padding:8px;">
+                <div style="font-size:0.8rem; color:var(--text-muted);">每次记忆强化倍率 (如 2.0 代表间隔翻倍)</div>
+                <input type="number" step="0.1" id="srsCustomMult" class="m-input" value="2.0" style="margin-bottom:0; padding:8px;">
+                <button class="m-btn btn-save" onclick="saveCustomSRS()" style="padding:8px;">保存自定义参数</button>
+            </div>
+        </div>
+
+        <div class="rd-card">
+            <div class="rd-card-title">📅 待复习队列</div>
+            <div class="rd-list" id="reviewQueueList">
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="firstTimeModal" class="modal">
     <div class="modal-content">
-        <div class="modal-title">📐 欢迎使用记忆助手</div>
-        <div style="font-size:0.95rem; color:#475569; line-height:1.6; margin-bottom:20px;">
-            这是一个免费离线的学习工具，包含导数、积分、极限和常用算数变换公式的查询与背诵。<br><br>
-            💡 <b>新特性：</b><br>
-            1. 全新标准的数学分式排版。<br>
-            2. 在“我的”页面点击“进入设置”，您可以长按自由拖拽排序、隐藏、删除甚至自定义添加您的专属公式！拖入空白处也能自动归类哦。
+        <div class="modal-title">📐 欢迎使用公式记忆助手</div>
+        <div style="font-size:0.9rem; line-height:1.6; margin-bottom:20px;">
+            💡 <b>核心功能与用法：</b><br>
+            1. <b>双效学习模式</b>：使用“沉浸查询”快速浏览全览，或切换“背诵模式”进行卡片盲测翻转。<br>
+            2. <b>智能SRS算法</b>：根据点击“记/忘”动态计算熟练度。熟练度达100%卡片将常驻翻开，直到触发您的遗忘周期才会自动盖上提醒复习。<br>
+            3. <b>自由拖拽整理</b>：在设置模式下长按卡片即可随意拖拽排序，或将其拖至底部进行“隐藏”与“删除”。超长公式卡片支持左右滑动查看。<br>
+            4. <b>深度个性化</b>：前往“我的”页面进入设置，不仅可以添加您的专属公式，还能自由调节字体比例、排版列数以及极简/赛博朋克等多种炫酷主题！
         </div>
-        <button class="m-btn btn-save" style="width:100%" onclick="closeGuide()">我已知晓，不再弹出</button>
+        <button class="m-btn btn-save" style="width:100%" onclick="closeGuide()">开始体验</button>
     </div>
 </div>
 
 <div id="addModal" class="modal">
     <div class="modal-content">
         <div class="modal-title">✨ 新增自定义公式</div>
-        <select id="addCategory" class="m-select">
+        <select id="addCategory" class="m-select" style="margin-bottom:15px;">
             <option value="derivatives">求导公式</option>
             <option value="integrals">积分公式</option>
             <option value="limits_eq">极限 - 等价无穷小</option>
@@ -305,539 +447,294 @@
         </select>
         <input type="text" id="addQ" class="m-input" placeholder="题目 (如: sinx)">
         <input type="text" id="addA" class="m-input" placeholder="答案 (如: cosx)">
-        <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:15px;">注：分式可使用HTML，如 &lt;span class="frac"&gt;&lt;span class="num"&gt;分子&lt;/span&gt;&lt;span class="den"&gt;分母&lt;/span&gt;&lt;/span&gt;</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:15px;">注：分式可使用 &lt;span class="frac"&gt;，极限可使用 &lt;span class="lim-wrap"&gt; 嵌套。</div>
         <div class="m-btns">
             <button class="m-btn btn-cancel" onclick="document.getElementById('addModal').style.display='none'">取消</button>
-            <button class="m-btn btn-save" onclick="saveNewFormula()">保存公式</button>
+            <button class="m-btn btn-save" onclick="saveNewFormula()">保存</button>
         </div>
     </div>
-</div>
-
-<div class="top-control" id="topControl">
-    <div class="mode-group">
-        <button class="mode-btn query-mode" id="queryBtn">🔍 沉浸查询</button>
-        <button class="mode-btn recite-mode active" id="reciteBtn">🧠 背诵模式</button>
-    </div>
-    <div class="global-controls" id="globalBtns">
-        <button class="global-btn show-all" onclick="setAllMask(false)">🔓 翻开全部</button>
-        <button class="global-btn hide-all" onclick="setAllMask(true)">🔒 盖上全部</button>
-    </div>
-</div>
-
-<div class="container" id="content">
-    <div id="derivatives" class="module active">
-        <div class="sub-title">▶ 导数核心公式</div>
-        <div class="formula-grid drop-zone" id="grid-derivatives" data-cat="derivatives"></div>
-    </div>
-    <div id="integrals" class="module">
-        <div class="sub-title">▶ 积分核心公式</div>
-        <div class="formula-grid drop-zone" id="grid-integrals" data-cat="integrals"></div>
-    </div>
-    <div id="limits" class="module">
-        <div class="sub-title">▶ 等价无穷小</div>
-        <div class="formula-grid drop-zone" id="grid-limits_eq" data-cat="limits_eq"></div>
-        <div class="sub-title" style="margin-top:20px;">▶ 重要极限</div>
-        <div class="formula-grid drop-zone" id="grid-limits_imp" data-cat="limits_imp"></div>
-    </div>
-    <div id="math" class="module">
-        <div class="sub-title">▶ 三角变换</div>
-        <div class="formula-grid drop-zone" id="grid-math_trig" data-cat="math_trig"></div>
-        <div class="sub-title" style="margin-top:20px;">▶ 立方和差</div>
-        <div class="formula-grid drop-zone" id="grid-math_cube" data-cat="math_cube"></div>
-    </div>
-    
-    <div id="profile" class="module">
-        <div class="profile-card">
-            <div class="avatar-wrap">
-                <img id="avatarImg" class="avatar" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NjYyI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC43MS0xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMi4wMSAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4=">
-                <div class="avatar-hint">更换头像</div>
-                <input type="file" id="avatarInput" accept="image/*" style="display:none">
-            </div>
-            <input type="text" id="nicknameInput" class="nickname-input" value="高数达人">
-            
-            <div class="stats-wrap">
-                <div class="stat-box">
-                    <span class="stat-num" id="statTotal">0</span>
-                    <span class="stat-label">公式总数</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-num" id="statMastered" style="color:var(--success)">0</span>
-                    <span class="stat-label">已掌握(100%)</span>
-                </div>
-            </div>
-            
-            <div class="settings-entry" onclick="enterSettings()">⚙️ 进入设置模式 (长按拖拽整理)</div>
-        </div>
-    </div>
-</div>
-
-<div class="hidden-drawer" id="hiddenDrawer">
-    <div class="drawer-title">📦 隐藏库 (将卡片拖出以恢复)</div>
-    <div class="formula-grid drop-zone" id="grid-hidden" data-cat="hidden" style="min-height: 120px; padding: 10px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #fff;"></div>
-</div>
-
-<div class="bottom-nav" id="mainNav">
-    <div class="nav-item active" data-target="derivatives"><div class="nav-icon">📈</div>求导</div>
-    <div class="nav-item" data-target="integrals"><div class="nav-icon">∫</div>积分</div>
-    <div class="nav-item" data-target="limits"><div class="nav-icon">∞</div>极限</div>
-    <div class="nav-item" data-target="math"><div class="nav-icon">▵</div>算数</div>
-    <div class="nav-item" data-target="profile"><div class="nav-icon">👤</div>我的</div>
-</div>
-
-<div class="settings-bottom-bar">
-    <div class="set-action" onclick="exitSettings()"><i style="color:#34d399">✔</i>完成退出</div>
-    <div class="set-action" onclick="document.getElementById('addModal').style.display='flex'"><i style="color:#60a5fa">➕</i>手动新增</div>
-    <div class="set-action drop-warning" id="hideDropZone" onclick="toggleDrawer()"><i>📦</i>收进隐藏库</div>
-    <div class="set-action drop-danger" id="deleteDropZone"><i>🗑️</i>拖入删除</div>
 </div>
 
 <script>
-// ===================== 默认初始数据 (分式化) =====================
 const defaultData = {
     derivatives: [
-        { id: 'd1', q: '(C)\'', a: '0' },
-        { id: 'd2', q: '(x<span class="sup">μ</span>)\'', a: 'μx<span class="sup">μ-1</span>' },
+        { id: 'd1', q: '(C)\'', a: '0' }, { id: 'd2', q: '(x<span class="sup">μ</span>)\'', a: 'μx<span class="sup">μ-1</span>' },
         { id: 'd3', q: '(√x)\'', a: '<span class="frac"><span class="num">1</span><span class="den">2√x</span></span>' },
         { id: 'd4', q: '(<span class="frac"><span class="num">1</span><span class="den">x</span></span>)\'', a: '-<span class="frac"><span class="num">1</span><span class="den">x²</span></span>' },
-        { id: 'd5', q: '(e<span class="sup">x</span>)\'', a: 'e<span class="sup">x</span>' },
-        { id: 'd6', q: '(a<span class="sup">x</span>)\'', a: 'a<span class="sup">x</span>·lna <span style="font-size:0.7em">(a>0,a≠1)</span>' },
-        { id: 'd7', q: '(lnx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">x</span></span>' },
-        { id: 'd8', q: '(logₐx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">x·lna</span></span> <span style="font-size:0.7em">(a>0,a≠1)</span>' },
-        { id: 'd9', q: '(sinx)\'', a: 'cosx' },
-        { id: 'd10', q: '(cosx)\'', a: '-sinx' },
+        { id: 'd5', q: '(e<span class="sup">x</span>)\'', a: 'e<span class="sup">x</span>' }, { id: 'd6', q: '(a<span class="sup">x</span>)\'', a: 'a<span class="sup">x</span>·lna <span style="font-size:0.7em">(a>0,a≠1)</span>' },
+        { id: 'd7', q: '(lnx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">x</span></span>' }, { id: 'd8', q: '(logₐx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">x·lna</span></span> <span style="font-size:0.7em">(a>0,a≠1)</span>' },
+        { id: 'd9', q: '(sinx)\'', a: 'cosx' }, { id: 'd10', q: '(cosx)\'', a: '-sinx' },
         { id: 'd11', q: '(tanx)\'', a: 'sec²x = <span class="frac"><span class="num">1</span><span class="den">cos²x</span></span>' },
         { id: 'd12', q: '(cotx)\'', a: '-csc²x = -<span class="frac"><span class="num">1</span><span class="den">sin²x</span></span>' },
-        { id: 'd13', q: '(secx)\'', a: 'secx·tanx' },
-        { id: 'd14', q: '(cscx)\'', a: '-cscx·cotx' },
+        { id: 'd13', q: '(secx)\'', a: 'secx·tanx' }, { id: 'd14', q: '(cscx)\'', a: '-cscx·cotx' },
         { id: 'd15', q: '(arcsinx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">√(1-x²)</span></span>' },
         { id: 'd16', q: '(arccosx)\'', a: '-<span class="frac"><span class="num">1</span><span class="den">√(1-x²)</span></span>' },
         { id: 'd17', q: '(arctanx)\'', a: '<span class="frac"><span class="num">1</span><span class="den">1+x²</span></span>' },
         { id: 'd18', q: '(arccotx)\'', a: '-<span class="frac"><span class="num">1</span><span class="den">1+x²</span></span>' }
     ],
     integrals: [
-        { id: 'i1', q: '∫kdx', a: 'kx+C' },
-        { id: 'i2', q: '∫x<span class="sup">μ</span>dx', a: '<span class="frac"><span class="num">x<span class="sup">μ+1</span></span><span class="den">μ+1</span></span>+C' },
-        { id: 'i3', q: '∫<span class="frac"><span class="num">1</span><span class="den">x</span></span>dx', a: 'ln|x|+C' },
-        { id: 'i4', q: '∫a<span class="sup">x</span>dx', a: '<span class="frac"><span class="num">a<span class="sup">x</span></span><span class="den">lna</span></span> +C' },
-        { id: 'i5', q: '∫e<span class="sup">x</span>dx', a: 'e<span class="sup">x</span>+C' },
-        { id: 'i6', q: '∫cosxdx', a: 'sinx+C' },
-        { id: 'i7', q: '∫sinxdx', a: '-cosx+C' },
-        { id: 'i8', q: '∫sec²xdx', a: 'tanx+C' },
-        { id: 'i9', q: '∫csc²xdx', a: '-cotx+C' },
-        { id: 'i10', q: '∫secxtanxdx', a: 'secx+C' },
-        { id: 'i11', q: '∫cscxcotxdx', a: '-cscx+C' },
-        { id: 'i12', q: '∫tanxdx', a: '-ln|cosx|+C' },
-        { id: 'i13', q: '∫cotxdx', a: 'ln|sinx|+C' },
-        { id: 'i14', q: '∫<span class="frac"><span class="num">dx</span><span class="den">a²+x²</span></span>', a: '<span class="frac"><span class="num">1</span><span class="den">a</span></span>arctan(<span class="frac"><span class="num">x</span><span class="den">a</span></span>)+C' },
-        { id: 'i15', q: '∫<span class="frac"><span class="num">dx</span><span class="den">√(a²-x²)</span></span>', a: 'arcsin(<span class="frac"><span class="num">x</span><span class="den">a</span></span>)+C' }
+        { id: 'i1', q: '∫k&nbsp;dx', a: 'kx+C' }, { id: 'i2', q: '∫x<span class="sup">μ</span>&nbsp;dx', a: '<span class="frac"><span class="num">x<span class="sup">μ+1</span></span><span class="den">μ+1</span></span>+C' },
+        { id: 'i3', q: '∫<span class="frac"><span class="num">1</span><span class="den">x</span></span>&nbsp;dx', a: 'ln|x|+C' },
+        { id: 'i4', q: '∫a<span class="sup">x</span>&nbsp;dx', a: '<span class="frac"><span class="num">a<span class="sup">x</span></span><span class="den">lna</span></span> +C' },
+        { id: 'i5', q: '∫e<span class="sup">x</span>&nbsp;dx', a: 'e<span class="sup">x</span>+C' }, { id: 'i6', q: '∫cosx&nbsp;dx', a: 'sinx+C' },
+        { id: 'i7', q: '∫sinx&nbsp;dx', a: '-cosx+C' }, { id: 'i8', q: '∫sec²x&nbsp;dx', a: 'tanx+C' },
+        { id: 'i9', q: '∫csc²x&nbsp;dx', a: '-cotx+C' }, { id: 'i10', q: '∫secxtanx&nbsp;dx', a: 'secx+C' },
+        { id: 'i11', q: '∫cscxcotx&nbsp;dx', a: '-cscx+C' }, { id: 'i12', q: '∫tanx&nbsp;dx', a: '-ln|cosx|+C' },
+        { id: 'i13', q: '∫cotx&nbsp;dx', a: 'ln|sinx|+C' },
+        { id: 'i14', q: '∫<span class="frac"><span class="num">1</span><span class="den">a²+x²</span></span>&nbsp;dx', a: '<span class="frac"><span class="num">1</span><span class="den">a</span></span>arctan(<span class="frac"><span class="num">x</span><span class="den">a</span></span>)+C' },
+        { id: 'i15', q: '∫<span class="frac"><span class="num">1</span><span class="den">√(a²-x²)</span></span>&nbsp;dx', a: 'arcsin(<span class="frac"><span class="num">x</span><span class="den">a</span></span>)+C' },
+        { id: 'i16', q: '∫lnx&nbsp;dx', a: 'xlnx-x+C' } 
     ],
     limits_eq: [
-        { id: 'l1', q: 'sinx ~', a: 'x' },
-        { id: 'l2', q: 'tanx ~', a: 'x' },
-        { id: 'l3', q: 'arcsinx ~', a: 'x' },
-        { id: 'l4', q: 'arctanx ~', a: 'x' },
-        { id: 'l5', q: 'ln(1+x) ~', a: 'x' },
-        { id: 'l6', q: 'e<span class="sup">x</span>-1 ~', a: 'x' },
-        { id: 'l7', q: 'a<span class="sup">x</span>-1 ~', a: 'xlna' },
-        { id: 'l8', q: '1-cosx ~', a: '<span class="frac"><span class="num">x²</span><span class="den">2</span></span>' },
+        { id: 'l1', q: 'sinx ~', a: 'x' }, { id: 'l2', q: 'tanx ~', a: 'x' }, { id: 'l3', q: 'arcsinx ~', a: 'x' },
+        { id: 'l4', q: 'arctanx ~', a: 'x' }, { id: 'l5', q: 'ln(1+x) ~', a: 'x' }, { id: 'l6', q: 'e<span class="sup">x</span>-1 ~', a: 'x' },
+        { id: 'l7', q: 'a<span class="sup">x</span>-1 ~', a: 'xlna' }, { id: 'l8', q: '1-cosx ~', a: '<span class="frac"><span class="num">x²</span><span class="den">2</span></span>' },
         { id: 'l9', q: '(1+x)<span class="sup">α</span>-1 ~', a: 'αx' }
     ],
     limits_imp: [
-        { id: 'l10', q: 'lim(x→0) <span class="frac"><span class="num">sinx</span><span class="den">x</span></span>', a: '1' },
-        { id: 'l11', q: 'lim(x→∞) (1+<span class="frac"><span class="num">1</span><span class="den">x</span></span>)<span class="sup">x</span>', a: 'e' },
-        { id: 'l12', q: 'lim(x→0) (1+x)<span class="sup">1/x</span>', a: 'e' },
-        { id: 'l13', q: 'lim(n→∞) ⁿ√n', a: '1' },
-        { id: 'l14', q: 'lim(n→∞) ⁿ√a <span style="font-size:0.7em">(a>0)</span>', a: '1' },
-        { id: 'l15', q: 'lim(n→∞) <span class="frac"><span class="num">aⁿ</span><span class="den">n!</span></span>', a: '0' }
+        { id: 'l10', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">x→0</span></span> <span class="frac"><span class="num">sinx</span><span class="den">x</span></span>', a: '1' },
+        { id: 'l11', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">x→∞</span></span> (1+<span class="frac"><span class="num">1</span><span class="den">x</span></span>)<span class="sup">x</span>', a: 'e' },
+        { id: 'l12', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">x→0</span></span> (1+x)<span class="sup">1/x</span>', a: 'e' },
+        { id: 'l13', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">n→∞</span></span> ⁿ√n', a: '1' },
+        { id: 'l14', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">n→∞</span></span> ⁿ√a <span style="font-size:0.7em">(a>0)</span>', a: '1' },
+        { id: 'l15', q: '<span class="lim-wrap"><span class="lim-text">lim</span><span class="lim-sub">n→∞</span></span> <span class="frac"><span class="num">aⁿ</span><span class="den">n!</span></span>', a: '0' }
     ],
     math_trig: [
-        { id: 'm0', q: 'sin²α+cos²α', a: '1' },
-        { id: 'm1', q: 'sin2α', a: '2sinαcosα' },
-        { id: 'm2', q: 'cos2α', a: 'cos²α-sin²α' },
-        { id: 'm3', q: 'cos2α', a: '2cos²α-1' },
-        { id: 'm4', q: 'cos2α', a: '1-2sin²α' },
+        { id: 'm0', q: 'sin²α+cos²α', a: '1' }, { id: 'm1', q: 'sin2α', a: '2sinαcosα' }, { id: 'm2', q: 'cos2α', a: 'cos²α-sin²α' },
+        { id: 'm3', q: 'cos2α', a: '2cos²α-1' }, { id: 'm4', q: 'cos2α', a: '1-2sin²α' },
         { id: 'm5', q: 'tan2α', a: '<span class="frac"><span class="num">2tanα</span><span class="den">1-tan²α</span></span>' },
         { id: 'm6', q: 'sin²α', a: '<span class="frac"><span class="num">1-cos2α</span><span class="den">2</span></span>' },
         { id: 'm7', q: 'cos²α', a: '<span class="frac"><span class="num">1+cos2α</span><span class="den">2</span></span>' },
         { id: 'm7b', q: 'sinαcosα', a: '<span class="frac"><span class="num">sin2α</span><span class="den">2</span></span>' }
     ],
     math_cube: [
-        { id: 'm8', q: 'a³+b³', a: '(a+b)(a²-ab+b²)' },
-        { id: 'm9', q: 'a³-b³', a: '(a-b)(a²+ab+b²)' },
-        { id: 'm10', q: '(a+b)³', a: 'a³+3a²b+3ab²+b³' },
-        { id: 'm11', q: '(a-b)³', a: 'a³-3a²b+3ab²-b³' }
+        { id: 'm8', q: 'a³+b³', a: '(a+b)(a²-ab+b²)' }, { id: 'm9', q: 'a³-b³', a: '(a-b)(a²+ab+b²)' },
+        { id: 'm10', q: '(a+b)³', a: 'a³+3a²b+3ab²+b³' }, { id: 'm11', q: '(a-b)³', a: 'a³-3a²b+3ab²-b³' }
     ]
 };
 
-// ===================== 数据存储层 =====================
 let formulaData = JSON.parse(localStorage.getItem('userFormulas')) || defaultData;
+if (localStorage.getItem('userFormulas')) {
+    defaultData.integrals.forEach(defItem => { const ui = formulaData.integrals.find(i => i.id === defItem.id); if(ui && !ui.q.includes('&nbsp;')) ui.q = defItem.q; });
+    if(!formulaData.integrals.find(i=>i.id==='i16')) formulaData.integrals.push(defaultData.integrals.find(i=>i.id==='i16'));
+}
+
+let srsData = JSON.parse(localStorage.getItem('srsData')) || {}; 
+let srsSettings = JSON.parse(localStorage.getItem('srsSettings')) || { mode: 'medium', base: 7, mult: 2.0 };
 let hiddenData = JSON.parse(localStorage.getItem('hiddenFormulas')) || [];
-const CONFIG = { stepAdd: 20, stepSub: 15, maxProgress: 100 };
-let currentMode = 'recite'; 
-let isSettingsMode = false;
+let checkinDates = JSON.parse(localStorage.getItem('checkinDates')) || [];
+let appSettings = JSON.parse(localStorage.getItem('appSettings')) || { zoom: 100, fontSize: 125, layout: 'auto', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", theme: 'normal', darkMode: 'light' };
+let currentMode = 'recite'; let isSettingsMode = false;
 
-function saveData() {
-    localStorage.setItem('userFormulas', JSON.stringify(formulaData));
-    localStorage.setItem('hiddenFormulas', JSON.stringify(hiddenData));
-    updateStats();
+function getSrsParams() {
+    if(srsSettings.mode === 'low') return { base: 14, mult: 2.5 };
+    if(srsSettings.mode === 'medium') return { base: 7, mult: 2.0 };
+    if(srsSettings.mode === 'high') return { base: 3, mult: 1.5 };
+    return { base: srsSettings.base, mult: srsSettings.mult }; 
 }
 
-function getProgress(id) { return parseInt(localStorage.getItem('mem_' + id)) || 0; }
-function setProgress(id, val) {
-    val = Math.max(0, Math.min(CONFIG.maxProgress, val));
-    localStorage.setItem('mem_' + id, val);
-    renderCardProgress(id);
-    updateStats();
+function migrateOldData() {
+    let migrated = false;
+    Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('mem_')) {
+            let id = k.split('_')[1];
+            let p = parseInt(localStorage.getItem(k));
+            let lc = localStorage.getItem('lastClick_' + id);
+            let t = lc ? new Date(lc).getTime() : Date.now();
+            if(!srsData[id]) srsData[id] = { p: p, i: p===100 ? getSrsParams().base : 1, t: t };
+            localStorage.removeItem(k); localStorage.removeItem('lastClick_' + id); migrated = true;
+        }
+    });
+    if(migrated) saveSRS();
 }
-function isClickedToday(id) { return localStorage.getItem('lastClick_' + id) === new Date().toDateString(); }
 
-// ===================== 渲染层 =====================
+function getCardState(id) {
+    if(!srsData[id]) return { p: 0, due: false, clickedToday: false };
+    const data = srsData[id];
+    const todayStr = new Date().toDateString();
+    const clickedToday = new Date(data.t).toDateString() === todayStr;
+    const daysPassed = (Date.now() - data.t) / 86400000;
+    const isDue = !clickedToday && (daysPassed >= data.i); 
+    return { p: data.p, due: isDue, clickedToday: clickedToday, i: data.i, daysLeft: Math.ceil(data.i - daysPassed) };
+}
+
+function updateSRS(id, isKnow) {
+    const params = getSrsParams(); let data = srsData[id] || { p: 0, i: 1, t: 0 };
+    if (isKnow) { data.p = Math.min(100, data.p + 20); if (data.p === 100) data.i = Math.max(params.base, data.i * params.mult); } 
+    else { data.p = Math.max(0, data.p - 15); data.i = 1; }
+    data.t = Date.now(); srsData[id] = data; saveSRS(); checkDailyPunch();
+}
+
+function resetSRS(id) { if(srsData[id]) { delete srsData[id]; saveSRS(); } }
+function saveSRS() { localStorage.setItem('srsData', JSON.stringify(srsData)); updateStats(); }
+function saveData() { localStorage.setItem('userFormulas', JSON.stringify(formulaData)); localStorage.setItem('hiddenFormulas', JSON.stringify(hiddenData)); updateStats(); }
+function saveSettings() { localStorage.setItem('appSettings', JSON.stringify(appSettings)); }
+
 function init() {
-    if (!localStorage.getItem('appGuide')) {
-        document.getElementById('firstTimeModal').style.display = 'flex';
-    }
-    
+    if (!localStorage.getItem('appGuideV3.3')) { document.getElementById('firstTimeModal').style.display = 'flex'; localStorage.setItem('appGuideV3.3', '1'); }
+    migrateOldData();
     if(localStorage.getItem('avatar')) document.getElementById('avatarImg').src = localStorage.getItem('avatar');
     if(localStorage.getItem('nickname')) document.getElementById('nicknameInput').value = localStorage.getItem('nickname');
 
-    renderAllGrids();
-    bindEvents();
-    syncModeUI();
-    updateStats();
+    document.getElementById('zoomSlider').value = appSettings.zoom; document.getElementById('zoomLabel').innerText = appSettings.zoom + '%'; document.documentElement.style.setProperty('--card-zoom', appSettings.zoom / 100);
+    document.getElementById('fontSizeSlider').value = appSettings.fontSize; document.getElementById('fontSizeLabel').innerText = appSettings.fontSize + '%'; document.documentElement.style.setProperty('--formula-font-size', (appSettings.fontSize / 100) + 'rem');
+    
+    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+    if(appSettings.layout === '1') { document.querySelectorAll('.layout-btn')[0].classList.add('active'); document.documentElement.style.setProperty('--grid-cols', '1fr'); }
+    else if(appSettings.layout === '2') { document.querySelectorAll('.layout-btn')[1].classList.add('active'); document.documentElement.style.setProperty('--grid-cols', 'repeat(2, 1fr)'); }
+    else if(appSettings.layout === '3') { document.querySelectorAll('.layout-btn')[2].classList.add('active'); document.documentElement.style.setProperty('--grid-cols', 'repeat(3, 1fr)'); }
+    else { document.getElementById('autoLayoutBtn').classList.add('active'); document.documentElement.style.setProperty('--grid-cols', 'repeat(auto-fill, minmax(175px, 1fr))'); }
+    
+    document.getElementById('fontFamilySelect').value = appSettings.fontFamily; document.documentElement.style.setProperty('--base-font', appSettings.fontFamily); document.documentElement.style.setProperty('--math-font', appSettings.fontFamily);
+    setColorTheme(appSettings.theme); setDarkMode(appSettings.darkMode);
+
+    document.getElementById('srsIntensity').value = srsSettings.mode;
+    if(srsSettings.mode === 'custom') document.getElementById('customSrsBox').style.display = 'flex';
+
+    renderAllGrids(); bindEvents(); syncModeUI(); updateStats();
 }
 
-function closeGuide() {
-    localStorage.setItem('appGuide', '1');
-    document.getElementById('firstTimeModal').style.display = 'none';
-}
+function closeGuide() { document.getElementById('firstTimeModal').style.display = 'none'; }
 
 function renderAllGrids() {
-    ['derivatives', 'integrals', 'limits_eq', 'limits_imp', 'math_trig', 'math_cube'].forEach(k => {
-        renderGrid(k, formulaData[k], 'grid-' + k);
-    });
-    renderGrid('hidden', hiddenData, 'grid-hidden');
-    bindDragEvents();
+    ['derivatives', 'integrals', 'limits_eq', 'limits_imp', 'math_trig', 'math_cube'].forEach(k => { renderGrid(k, formulaData[k], 'grid-' + k); });
+    renderGrid('hidden', hiddenData, 'grid-hidden'); bindDragEvents();
 }
 
 function renderGrid(cat, dataArr, containerId) {
-    const grid = document.getElementById(containerId);
-    if (!grid) return;
-    grid.innerHTML = dataArr.map(item => `
+    const grid = document.getElementById(containerId); if (!grid) return;
+    grid.innerHTML = dataArr.map(item => {
+        const st = getCardState(item.id);
+        const isFlipped = st.clickedToday || (st.p >= 100 && !st.due);
+        return `
         <div class="formula-card ${isSettingsMode ? 'draggable' : ''}" draggable="${isSettingsMode}" data-id="${item.id}" data-cat="${cat}">
-            <div class="formula-row">${item.q}</div>
+            <div class="formula-row scroll-container"><div class="scroll-content">${item.q}</div></div>
             <div class="answer-container">
-                <div class="flipper ${getProgress(item.id)>=100 && !isSettingsMode && currentMode!=='query' ? 'flipped' : ''}" data-id="${item.id}" onclick="toggleFlip('${item.id}')">
+                <div class="flipper ${isFlipped && !isSettingsMode && currentMode!=='query' ? 'flipped' : ''}" data-id="${item.id}" onclick="toggleFlip('${item.id}')">
                     <div class="front">点击翻转</div>
-                    <div class="back">${item.a}</div>
+                    <div class="back scroll-container"><div class="scroll-content">${item.a}</div></div>
                 </div>
             </div>
             <div class="progress-wrap">
-                <div class="progress-track"><div class="progress-fill ${getProgress(item.id)>=100?'full':''}" style="width:${getProgress(item.id)}%"></div></div>
-                <div class="progress-text">${getProgress(item.id)}%</div>
+                <div class="progress-track"><div class="progress-fill ${st.p>=100?'full':''}" style="width:${st.p}%"></div></div>
+                <div class="progress-text">${st.p}% ${st.due ? '<span style="color:var(--danger)">需复习</span>' : ''}</div>
             </div>
             <div class="btn-group">
-                <button class="mem-btn know" id="know-${item.id}" onclick="doKnow('${item.id}')" ${isClickedToday(item.id)?'disabled':''}>记</button>
-                <button class="mem-btn forget" id="forget-${item.id}" onclick="doForget('${item.id}')" ${isClickedToday(item.id)?'disabled':''}>忘</button>
+                <button class="mem-btn know" id="know-${item.id}" onclick="doKnow('${item.id}')" ${st.clickedToday?'disabled':''}>记</button>
+                <button class="mem-btn forget" id="forget-${item.id}" onclick="doForget('${item.id}')" ${st.clickedToday?'disabled':''}>忘</button>
                 <button class="mem-btn reset" onclick="doReset('${item.id}')">清</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function renderCardProgress(id) {
-    const card = document.querySelector(`.formula-card[data-id="${id}"]`);
-    if (!card) return;
-    const p = getProgress(id);
-    const fill = card.querySelector('.progress-fill');
-    fill.style.width = p + '%';
-    p >= 100 ? fill.classList.add('full') : fill.classList.remove('full');
-    card.querySelector('.progress-text').textContent = p + '%';
+    const card = document.querySelector(`.formula-card[data-id="${id}"]`); if (!card) return;
+    const st = getCardState(id);
+    const fill = card.querySelector('.progress-fill'); fill.style.width = st.p + '%';
+    st.p >= 100 ? fill.classList.add('full') : fill.classList.remove('full');
+    card.querySelector('.progress-text').innerHTML = `${st.p}% ${st.due ? '<span style="color:var(--danger)">需复习</span>' : ''}`;
+    
     const flipper = card.querySelector('.flipper');
-    if(p >= 100 && currentMode === 'recite' && !isSettingsMode) flipper.classList.add('flipped');
-}
-
-// ===================== 背诵交互 =====================
-function toggleFlip(id) {
-    if (currentMode === 'query' || isSettingsMode) return;
-    document.querySelector(`.flipper[data-id="${id}"]`).classList.toggle('flipped');
-}
-function setAllMask(hide) {
-    if (currentMode === 'query') return;
-    document.querySelectorAll('.flipper').forEach(f => {
-        if (getProgress(f.dataset.id) < 100) hide ? f.classList.remove('flipped') : f.classList.add('flipped');
-    });
-}
-function doKnow(id) {
-    if (isClickedToday(id)) return alert('今日已完成');
-    localStorage.setItem('lastClick_' + id, new Date().toDateString());
-    setProgress(id, getProgress(id) + CONFIG.stepAdd);
-    syncBtnState(id);
-}
-function doForget(id) {
-    if (isClickedToday(id)) return alert('今日已完成');
-    localStorage.setItem('lastClick_' + id, new Date().toDateString());
-    setProgress(id, getProgress(id) - CONFIG.stepSub);
-    syncBtnState(id);
-}
-function doReset(id) {
-    localStorage.removeItem('mem_' + id);
-    localStorage.removeItem('lastClick_' + id);
-    document.querySelector(`.flipper[data-id="${id}"]`).classList.remove('flipped');
-    renderCardProgress(id);
-    syncBtnState(id);
-}
-function syncBtnState(id) {
-    const dis = isClickedToday(id);
-    const card = document.querySelector(`.formula-card[data-id="${id}"]`);
-    if(card) {
-        card.querySelector('.know').disabled = dis;
-        card.querySelector('.forget').disabled = dis;
+    if(currentMode === 'recite' && !isSettingsMode) {
+        if (st.clickedToday || (st.p >= 100 && !st.due)) flipper.classList.add('flipped');
+        else flipper.classList.remove('flipped');
     }
 }
 
-// ===================== 视图与模式切换 =====================
+function checkDailyPunch() { const today = new Date().toDateString(); if(!checkinDates.includes(today)) { checkinDates.push(today); localStorage.setItem('checkinDates', JSON.stringify(checkinDates)); updateStats(); } }
+function toggleFlip(id) { if (currentMode === 'query' || isSettingsMode) return; document.querySelector(`.flipper[data-id="${id}"]`).classList.toggle('flipped'); }
+function setAllMask(hide) { if (currentMode === 'query') return; document.querySelectorAll('.flipper').forEach(f => { const st = getCardState(f.dataset.id); if (!(st.clickedToday || (st.p >= 100 && !st.due))) hide ? f.classList.remove('flipped') : f.classList.add('flipped'); }); }
+function doKnow(id) { const st = getCardState(id); if (st.clickedToday) return alert('今日已完成'); updateSRS(id, true); renderCardProgress(id); syncBtnState(id); }
+function doForget(id) { const st = getCardState(id); if (st.clickedToday) return alert('今日已完成'); updateSRS(id, false); renderCardProgress(id); syncBtnState(id); }
+function doReset(id) { resetSRS(id); document.querySelector(`.flipper[data-id="${id}"]`).classList.remove('flipped'); renderCardProgress(id); syncBtnState(id); }
+function syncBtnState(id) { const st = getCardState(id); const card = document.querySelector(`.formula-card[data-id="${id}"]`); if(card) { card.querySelector('.know').disabled = st.clickedToday; card.querySelector('.forget').disabled = st.clickedToday; } }
+
 function syncModeUI() {
     const isQuery = currentMode === 'query';
     document.getElementById('globalBtns').style.display = isQuery ? 'none' : 'flex';
     document.querySelectorAll('.progress-wrap, .btn-group').forEach(el => el.style.display = isQuery ? 'none' : 'flex');
-    document.querySelectorAll('.flipper').forEach(f => isQuery ? f.classList.add('flipped') : (getProgress(f.dataset.id)<100 && f.classList.remove('flipped')));
-    document.getElementById('queryBtn').classList.toggle('active', isQuery);
-    document.getElementById('reciteBtn').classList.toggle('active', !isQuery);
+    document.querySelectorAll('.flipper').forEach(f => { const st = getCardState(f.dataset.id); if(isQuery) f.classList.add('flipped'); else if(!(st.clickedToday || (st.p >= 100 && !st.due))) f.classList.remove('flipped'); });
+    document.getElementById('queryBtn').classList.toggle('active', isQuery); document.getElementById('reciteBtn').classList.toggle('active', !isQuery);
 }
 
-function enterSettings() {
-    isSettingsMode = true;
-    document.body.classList.add('settings-active');
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    document.querySelector('.nav-item[data-target="derivatives"]').classList.add('active'); 
-    switchTab('derivatives');
-    renderAllGrids(); 
-}
+function switchSettingsTab(tab) { document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.s-panel').forEach(p => p.classList.remove('active')); event.target.classList.add('active'); document.getElementById('settings-' + tab).classList.add('active'); }
+function setLayout(cols, btnElement) { document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active')); if(btnElement) btnElement.classList.add('active'); const root = document.documentElement; if(cols === '1') root.style.setProperty('--grid-cols', '1fr'); else if(cols === '2') root.style.setProperty('--grid-cols', 'repeat(2, 1fr)'); else if(cols === '3') root.style.setProperty('--grid-cols', 'repeat(3, 1fr)'); else root.style.setProperty('--grid-cols', 'repeat(auto-fill, minmax(175px, 1fr))'); appSettings.layout = cols; saveSettings(); }
+function setFontFamily(val) { document.documentElement.style.setProperty('--base-font', val); document.documentElement.style.setProperty('--math-font', val); appSettings.fontFamily = val; saveSettings(); }
+function setColorTheme(theme) { document.documentElement.setAttribute('data-color', theme); document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active')); document.getElementById('theme-' + theme).classList.add('active'); appSettings.theme = theme; saveSettings(); }
+function setDarkMode(mode) { document.documentElement.setAttribute('data-dark', mode); document.querySelectorAll('.mode-toggle-btn').forEach(b => b.classList.remove('active')); document.getElementById('dark-' + mode).classList.add('active'); appSettings.darkMode = mode; saveSettings(); }
 
-function exitSettings() {
-    isSettingsMode = false;
-    document.body.classList.remove('settings-active');
-    document.getElementById('hiddenDrawer').classList.remove('open');
-    renderAllGrids();
-    syncModeUI();
-}
+function changeSRSIntensity(val) { srsSettings.mode = val; document.getElementById('customSrsBox').style.display = val === 'custom' ? 'flex' : 'none'; localStorage.setItem('srsSettings', JSON.stringify(srsSettings)); }
+function saveCustomSRS() { srsSettings.base = parseInt(document.getElementById('srsCustomBase').value) || 7; srsSettings.mult = parseFloat(document.getElementById('srsCustomMult').value) || 2.0; localStorage.setItem('srsSettings', JSON.stringify(srsSettings)); alert('自定义抗性参数已保存！'); }
 
-function toggleDrawer() {
-    document.getElementById('hiddenDrawer').classList.toggle('open');
-}
+function updateStats() {
+    let total = hiddenData.length; let master = 0; let dueTotal = 0;
+    const catStats = {};
+    const catNames = { derivatives: '求导', integrals: '积分', limits_eq: '等价无穷小', limits_imp: '重要极限', math_trig: '三角变换', math_cube: '立方和差' };
 
-function switchTab(target) {
-    document.querySelectorAll('.module').forEach(el => el.classList.remove('active'));
-    document.getElementById(target).classList.add('active');
+    Object.keys(formulaData).forEach(k => {
+        total += formulaData[k].length; catStats[k] = { dueToday: 0, nextDays: [] };
+        formulaData[k].forEach(item => {
+            const st = getCardState(item.id); if(st.p >= 100) master++;
+            if(st.due) { dueTotal++; catStats[k].dueToday++; } else if(st.p > 0) catStats[k].nextDays.push(st.daysLeft);
+        });
+    });
+    hiddenData.forEach(item => { const st = getCardState(item.id); if(st.p >= 100) master++; });
     
-    if(target !== 'profile') {
-        document.getElementById('topControl').style.display = isSettingsMode ? 'none' : 'flex';
-        document.getElementById('topControl').style.opacity = isSettingsMode ? '0' : '1';
-    } else {
-        document.getElementById('topControl').style.display = 'none';
-        updateStats();
-    }
-    
-    // 切换模块时滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('statTotal').innerText = total; document.getElementById('statMastered').innerText = master; document.getElementById('statCheckin').innerText = checkinDates.length;
+
+    const pct = total === 0 ? 0 : Math.round((master / total) * 100);
+    document.getElementById('chartPieText').innerText = pct + '%'; document.getElementById('chartPie').style.strokeDasharray = `${pct} 100`;
+
+    const lineStr = `0,35 20,${Math.max(5, 35 - pct*0.3)} 50,${Math.max(2, 35 - pct*0.5)} 80,${Math.max(2, 30 - pct*0.6)} 100,2`;
+    document.getElementById('chartLine').setAttribute('points', lineStr);
+
+    let html = '';
+    Object.keys(catStats).forEach(k => {
+        let stats = catStats[k];
+        if (stats.dueToday > 0 || stats.nextDays.length > 0) {
+            let nextInfo = '';
+            if (stats.dueToday > 0) nextInfo += `<span class="due">💥 今日待复习: ${stats.dueToday}</span>`;
+            else { let minNext = Math.min(...stats.nextDays); nextInfo += `下批复习在 ${minNext} 天后`; }
+            html += `<div class="rd-item"><span>▶ ${catNames[k]}</span><span>${nextInfo}</span></div>`;
+        }
+    });
+    document.getElementById('reviewQueueList').innerHTML = html || '<div class="rd-item" style="justify-content:center;color:var(--success);">✅ 所有队列处于完美记忆状态！</div>';
 }
+
+function enterSettings() { isSettingsMode = true; document.body.classList.add('settings-active'); document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); document.querySelector('.nav-item[data-target="derivatives"]').classList.add('active'); switchTab('derivatives'); renderAllGrids(); }
+function exitSettings() { isSettingsMode = false; document.body.classList.remove('settings-active'); document.getElementById('hiddenDrawer').classList.remove('open'); renderAllGrids(); syncModeUI(); }
+function toggleDrawer() { document.getElementById('hiddenDrawer').classList.toggle('open'); }
+function switchTab(target) { document.querySelectorAll('.module').forEach(el => el.classList.remove('active')); document.getElementById(target).classList.add('active'); if(target === 'profile') updateStats(); document.getElementById('scrollView').scrollTo({ top: 0, behavior: 'smooth' }); }
 
 function bindEvents() {
     document.getElementById('queryBtn').onclick = () => { currentMode = 'query'; syncModeUI(); };
     document.getElementById('reciteBtn').onclick = () => { currentMode = 'recite'; syncModeUI(); };
-    
-    document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.onclick = () => {
-            if(isSettingsMode) return; 
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            switchTab(btn.dataset.target);
-        };
-    });
-
-    // 头像点击模拟文件上传
+    document.getElementById('zoomSlider').addEventListener('input', function(e) { const val = e.target.value; document.getElementById('zoomLabel').innerText = val + '%'; document.documentElement.style.setProperty('--card-zoom', val / 100); appSettings.zoom = val; saveSettings(); });
+    document.getElementById('fontSizeSlider').addEventListener('input', function(e) { const val = e.target.value; document.getElementById('fontSizeLabel').innerText = val + '%'; document.documentElement.style.setProperty('--formula-font-size', (val / 100) + 'rem'); appSettings.fontSize = val; saveSettings(); });
+    document.querySelectorAll('.nav-item').forEach(btn => { btn.onclick = () => { if(isSettingsMode) return; document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active')); btn.classList.add('active'); switchTab(btn.dataset.target); }; });
     document.getElementById('avatarImg').onclick = () => document.getElementById('avatarInput').click();
-
     document.getElementById('nicknameInput').addEventListener('change', (e) => localStorage.setItem('nickname', e.target.value));
-    document.getElementById('avatarInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(file) {
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                document.getElementById('avatarImg').src = evt.target.result;
-                localStorage.setItem('avatar', evt.target.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+    document.getElementById('avatarInput').addEventListener('change', function(e) { const file = e.target.files[0]; if(file) { const reader = new FileReader(); reader.onload = function(evt) { document.getElementById('avatarImg').src = evt.target.result; localStorage.setItem('avatar', evt.target.result); }; reader.readAsDataURL(file); } });
 }
 
-function updateStats() {
-    let total = hiddenData.length;
-    let master = 0;
-    Object.keys(formulaData).forEach(k => {
-        total += formulaData[k].length;
-        formulaData[k].forEach(item => { if(getProgress(item.id) >= 100) master++; });
-    });
-    hiddenData.forEach(item => { if(getProgress(item.id) >= 100) master++; });
-    
-    document.getElementById('statTotal').innerText = total;
-    document.getElementById('statMastered').innerText = master;
-}
-
-// ===================== 拖拽系统 (完善网格空白处掉落) =====================
 let draggedItem = null;
-
 function bindDragEvents() {
-    const cards = document.querySelectorAll('.formula-card[draggable="true"]');
-    cards.forEach(card => {
-        card.addEventListener('dragstart', handleDragStart);
-        card.addEventListener('dragover', handleCardDragOver);
-        card.addEventListener('drop', handleDropOnCard);
-        card.addEventListener('dragend', handleDragEnd);
-    });
-
-    // 重点：将所有网格设为可接受掉落区域 (解决空白处拖放问题)
-    const grids = document.querySelectorAll('.drop-zone');
-    grids.forEach(grid => {
-        grid.addEventListener('dragover', handleGridDragOver);
-        grid.addEventListener('dragleave', handleGridDragLeave);
-        grid.addEventListener('drop', handleDropOnGrid);
-    });
-
-    const delZone = document.getElementById('deleteDropZone');
-    const hideZone = document.getElementById('hideDropZone');
-    
-    [delZone, hideZone].forEach(zone => {
-        if(!zone) return;
-        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-        zone.addEventListener('drop', handleDropOnActionZone);
-    });
+    const cards = document.querySelectorAll('.formula-card[draggable="true"]'); cards.forEach(card => { card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragover', handleCardDragOver); card.addEventListener('drop', handleDropOnCard); card.addEventListener('dragend', handleDragEnd); });
+    const grids = document.querySelectorAll('.drop-zone'); grids.forEach(grid => { grid.addEventListener('dragover', handleGridDragOver); grid.addEventListener('dragleave', handleGridDragLeave); grid.addEventListener('drop', handleDropOnGrid); });
+    const delZone = document.getElementById('deleteDropZone'); const hideZone = document.getElementById('hideDropZone');
+    [delZone, hideZone].forEach(zone => { if(!zone) return; zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); }); zone.addEventListener('dragleave', () => zone.classList.remove('drag-over')); zone.addEventListener('drop', handleDropOnActionZone); });
 }
+function handleDragStart(e) { draggedItem = { id: this.dataset.id, cat: this.dataset.cat }; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => this.classList.add('dragging'), 0); }
+function handleCardDragOver(e) { e.preventDefault(); e.stopPropagation(); if(this.dataset.id !== draggedItem.id) this.classList.add('card-drag-over'); }
+function handleGridDragOver(e) { e.preventDefault(); this.classList.add('grid-drag-over'); }
+function handleGridDragLeave(e) { this.classList.remove('grid-drag-over'); }
+function handleDragEnd() { this.classList.remove('dragging'); document.querySelectorAll('.formula-card, .set-action, .formula-grid').forEach(c => { c.classList.remove('card-drag-over'); c.classList.remove('drag-over'); c.classList.remove('grid-drag-over'); }); }
+function handleDropOnCard(e) { e.stopPropagation(); this.classList.remove('card-drag-over'); if (this.dataset.id === draggedItem.id) return; const targetCat = this.dataset.cat; const targetId = this.dataset.id; let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat]; let targetArr = targetCat === 'hidden' ? hiddenData : formulaData[targetCat]; const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id); const targetIdx = targetArr.findIndex(i => i.id === targetId); const item = sourceArr.splice(sourceIdx, 1)[0]; if (draggedItem.cat !== targetCat) { targetArr.splice(targetIdx, 0, item); } else { const temp = targetArr[targetIdx]; targetArr[targetIdx] = item; sourceArr.splice(sourceIdx, 0, temp); } saveData(); renderAllGrids(); }
+function handleDropOnGrid(e) { e.preventDefault(); this.classList.remove('grid-drag-over'); if(!draggedItem) return; const targetCat = this.dataset.cat; if(draggedItem.cat === targetCat) return; let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat]; let targetArr = targetCat === 'hidden' ? hiddenData : formulaData[targetCat]; const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id); const item = sourceArr.splice(sourceIdx, 1)[0]; targetArr.push(item); saveData(); renderAllGrids(); }
+function handleDropOnActionZone(e) { e.preventDefault(); this.classList.remove('drag-over'); if(!draggedItem) return; let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat]; const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id); const item = sourceArr.splice(sourceIdx, 1)[0]; if (this.id === 'deleteDropZone') { resetSRS(item.id); } else if (this.id === 'hideDropZone') { if(draggedItem.cat !== 'hidden') hiddenData.push(item); else sourceArr.splice(sourceIdx, 0, item); } saveData(); renderAllGrids(); }
 
-function handleDragStart(e) {
-    draggedItem = { id: this.dataset.id, cat: this.dataset.cat };
-    e.dataTransfer.effectAllowed = 'move';
-    setTimeout(() => this.classList.add('dragging'), 0);
-}
-
-// 卡片悬停
-function handleCardDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation(); // 阻止冒泡到Grid
-    if(this.dataset.id !== draggedItem.id) this.classList.add('card-drag-over');
-}
-
-// 网格悬停 (空白处)
-function handleGridDragOver(e) {
-    e.preventDefault();
-    this.classList.add('grid-drag-over');
-}
-
-function handleGridDragLeave(e) {
-    this.classList.remove('grid-drag-over');
-}
-
-function handleDragEnd() {
-    this.classList.remove('dragging');
-    document.querySelectorAll('.formula-card, .set-action, .formula-grid').forEach(c => {
-        c.classList.remove('card-drag-over');
-        c.classList.remove('drag-over');
-        c.classList.remove('grid-drag-over');
-    });
-}
-
-// 1. 掉落到具体卡片上 (交换/插入)
-function handleDropOnCard(e) {
-    e.stopPropagation(); // 阻止触发 Grid 的 Drop
-    this.classList.remove('card-drag-over');
-    if (this.dataset.id === draggedItem.id) return;
-    
-    const targetCat = this.dataset.cat;
-    const targetId = this.dataset.id;
-    
-    let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat];
-    let targetArr = targetCat === 'hidden' ? hiddenData : formulaData[targetCat];
-    
-    const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id);
-    const targetIdx = targetArr.findIndex(i => i.id === targetId);
-    const item = sourceArr.splice(sourceIdx, 1)[0];
-    
-    if (draggedItem.cat !== targetCat) {
-        targetArr.splice(targetIdx, 0, item);
-    } else {
-        const temp = targetArr[targetIdx];
-        targetArr[targetIdx] = item;
-        sourceArr.splice(sourceIdx, 0, temp); 
-    }
-    
-    saveData();
-    renderAllGrids();
-}
-
-// 2. 掉落到网格空白处 (追加到末尾)
-function handleDropOnGrid(e) {
-    e.preventDefault();
-    this.classList.remove('grid-drag-over');
-    if(!draggedItem) return;
-
-    const targetCat = this.dataset.cat;
-    if(draggedItem.cat === targetCat) return; // 同网格空白处掉落不处理
-
-    let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat];
-    let targetArr = targetCat === 'hidden' ? hiddenData : formulaData[targetCat];
-    
-    const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id);
-    const item = sourceArr.splice(sourceIdx, 1)[0];
-    
-    targetArr.push(item); // 放到末尾
-    
-    saveData();
-    renderAllGrids();
-}
-
-// 3. 掉落到底部操作区 (删除/隐藏)
-function handleDropOnActionZone(e) {
-    e.preventDefault();
-    this.classList.remove('drag-over');
-    if(!draggedItem) return;
-
-    let sourceArr = draggedItem.cat === 'hidden' ? hiddenData : formulaData[draggedItem.cat];
-    const sourceIdx = sourceArr.findIndex(i => i.id === draggedItem.id);
-    const item = sourceArr.splice(sourceIdx, 1)[0];
-
-    if (this.id === 'deleteDropZone') {
-        localStorage.removeItem('mem_' + item.id);
-        localStorage.removeItem('lastClick_' + item.id);
-    } 
-    else if (this.id === 'hideDropZone') {
-        if(draggedItem.cat !== 'hidden') hiddenData.push(item);
-        else sourceArr.splice(sourceIdx, 0, item); // 本来就是隐藏的放回去
-    }
-    
-    saveData();
-    renderAllGrids();
-}
-
-// ===================== 新增自定义公式 =====================
-function saveNewFormula() {
-    const cat = document.getElementById('addCategory').value;
-    const q = document.getElementById('addQ').value.trim();
-    const a = document.getElementById('addA').value.trim();
-    
-    if(!q || !a) return alert('请填写完整题干和答案！');
-    
-    const newItem = { id: 'custom_' + Date.now(), q, a };
-    formulaData[cat].push(newItem);
-    saveData();
-    
-    document.getElementById('addQ').value = '';
-    document.getElementById('addA').value = '';
-    document.getElementById('addModal').style.display = 'none';
-    
-    if(isSettingsMode) renderAllGrids();
-}
+function saveNewFormula() { const cat = document.getElementById('addCategory').value; const q = document.getElementById('addQ').value.trim(); const a = document.getElementById('addA').value.trim(); if(!q || !a) return alert('请填写完整题干和答案！'); const newItem = { id: 'custom_' + Date.now(), q, a }; formulaData[cat].push(newItem); saveData(); document.getElementById('addQ').value = ''; document.getElementById('addA').value = ''; document.getElementById('addModal').style.display = 'none'; if(isSettingsMode) renderAllGrids(); }
 
 init();
 </script>
